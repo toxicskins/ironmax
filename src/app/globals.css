@@ -22,5 +22,103 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Chasing marquee bulbs along a cabinet edge, like a real slot machine frame. */
+@keyframes marquee-chase {
+  from { background-position: 0 0; }
+  to { background-position: 28px 0; }
+}
+@keyframes marquee-chase-v {
+  from { background-position: 0 0; }
+  to { background-position: 0 28px; }
+}
+.marquee-lights {
+  background-image: repeating-radial-gradient(circle at 7px 3px, #fde68a 0 2.5px, rgba(253,230,138,0.15) 2.5px 4px, transparent 4px 28px);
+  background-repeat: repeat-x;
+  animation: marquee-chase 0.7s linear infinite;
+}
+.marquee-lights-v {
+  background-image: repeating-radial-gradient(circle at 3px 7px, #fde68a 0 2.5px, rgba(253,230,138,0.15) 2.5px 4px, transparent 4px 28px);
+  background-repeat: repeat-y;
+  animation: marquee-chase-v 0.7s linear infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.glow-pulse { animation: glow-pulse 2.4s ease-in-out infinite; }
+
+@keyframes sparkle-drift {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(-40px) scale(0.4); opacity: 0; }
+}
+.sparkle { animation: sparkle-drift 3s ease-in infinite; }
+
+/* Diagonal light sweep across a preview card, like a glossy jackpot poster. */
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-120%) skewX(-15deg); }
+  100% { transform: translateX(220%) skewX(-15deg); }
+}
+.shimmer-sweep {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  animation: shimmer-sweep 2.8s ease-in-out infinite;
+}
+
+/* Scrolling jackpot ticker, like a real casino lobby marquee strip. */
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: ticker-scroll 28s linear infinite;
+}
+
+@keyframes badge-pop {
+  0%, 100% { transform: scale(1) rotate(-6deg); }
+  50% { transform: scale(1.08) rotate(-6deg); }
+}
+.badge-pop { animation: badge-pop 1.6s ease-in-out infinite; }
+
+/* Give every plain form field a bit of depth (recessed well) instead of a flat filled box,
+   and a visible glow on focus — applied globally so every form on the site picks it up. */
+input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea, select {
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.55);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+/* Native spin-button arrows on number inputs render as a stock browser widget that clashes with
+   the dark casino chrome (and can visually clip neighboring labels in a tight flex row) — every
+   stake/target input already has its own chip/slider UI for adjusting the value, so the native
+   spinner is pure clutter. */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Hide the scrollbar on the horizontally-scrolling chip row (mobile) — the row already signals
+   "more content" via the visible partial chip at the edge, a visible scrollbar is just noise. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus,
+input[type="number"]:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.55), 0 0 0 3px rgba(245, 158, 11, 0.25);
 }

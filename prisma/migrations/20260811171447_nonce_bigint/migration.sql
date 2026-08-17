@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Bet" ALTER COLUMN "nonce" SET DATA TYPE BIGINT;

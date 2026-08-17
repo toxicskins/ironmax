@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IRONMAX — Social Casino
 
-## Getting Started
+Next.js 16 (App Router) + Prisma/Postgres + NextAuth. 100 coins = €1. Coins are never
+withdrawable — deposit-only virtual balance, plus a separate free demo balance (50 coins
+on signup) so players can try any game before paying.
 
-First, run the development server:
+## Stack
+- **App/hosting**: Vercel
+- **Database**: Postgres on AWS RDS, via Prisma
+- **Auth**: NextAuth (credentials, bcrypt)
+- **Payments**: PayNet Easy (deposit-only — real EUR in, coins out, no withdrawal path)
+- **Games**: one shared provably-fair engine (`src/lib/fair.ts`) driving 16 game configs
+  (`src/lib/games/registry.ts`) — slots ×2, dice, limbo, coinflip, wheel, roulette, mines,
+  tower, plinko, keno, hi-lo, blackjack, baccarat, video poker, crash.
+- **Invoices**: PDF generated server-side (`@react-pdf/renderer`), stored as bytes in Postgres,
+  downloadable from the account page.
 
+## Local setup
 ```bash
+cp .env.example .env   # fill in DATABASE_URL etc.
+npm install
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploy
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 1. Database — AWS RDS Postgres
+1. Create an RDS Postgres instance (public access only if you're not using a VPC peering /
+   PrivateLink setup with Vercel — otherwise keep it private and use Vercel's AWS integration).
+2. Create a database + user, then set `DATABASE_URL` in Vercel's project env vars:
+   `postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=require`
+3. Run `npx prisma migrate deploy` (from CI or locally pointed at the RDS instance) to apply
+   the schema — do this before or during first deploy, not automatically on every build.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. App — Vercel
+1. `vercel link`, then set env vars from `.env.example` in the Vercel dashboard
+   (`DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, `PAYNET_*`).
+2. `vercel --prod`.
 
-## Learn More
+### 3. Payments — PayNet Easy
+`src/lib/paynet.ts` wraps their merchant API (end-point-id + HMAC-signed requests) — verify
+the exact field names and webhook payload shape against your PayNet Easy merchant dashboard
+before going live, and point their deposit-confirmed webhook at
+`https://<your-domain>/api/webhooks/paynet`.
 
-To learn more about Next.js, take a look at the following resources:
+## Admin access
+There's no signup flow for admins — promote a user manually:
+```sql
+UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
+Admins get `/admin`: see all users + wallets, all deposits, and can adjust any user's real
+coin balance.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Known simplifications (ponytail-tagged in code)
+- Provably-fair seed is generated and revealed in the same request instead of pre-committed
+  (hash shown before bet, seed after) — fine for MVP, tighten before marketing "provably fair".
+- Invoice PDFs are stored as bytes in Postgres instead of S3 — move to S3 if invoice volume/size
+  grows.

@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TxType {
+  DEPOSIT
+  BET
+  WIN
+  ADMIN_ADJUST
+}
+
+enum TxStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  role           Role     @default(USER)
+  firstName      String?
+  lastName       String?
+  billingAddress String?
+  createdAt      DateTime @default(now())
+
+  wallet       Wallet?
+  transactions Transaction[]
+  bets         Bet[]
+  invoices     Invoice[]
+  resetTokens  PasswordResetToken[]
+}
+
+model Wallet {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  coins       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}
+
+model Transaction {
+  id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id])
+  type           TxType
+  status         TxStatus   @default(COMPLETED)
+  coinsDelta     Int
+  eurAmount      Decimal?   @db.Decimal(10, 2)
+  paynetOrderId  String?    @unique
+  note           String?
+  createdAt      DateTime   @default(now())
+
+  // Billing snapshot captured at checkout time (DepositForm) — kept on the transaction rather
+  // than only on User, since a buyer's name/address at the time of a given purchase shouldn't
+  // silently change if they later edit their profile.
+  billingName    String?
+  billingPhone   String?
+  billingAddress String?
+
+  invoice        Invoice?
+}
+
+model Invoice {
+  id            String      @id @default(cuid())
+  transactionId String      @unique
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  number        String      @unique
+  // ponytail: PDF bytes stored directly in Postgres instead of S3 — invoices are small and this
+  // avoids a second AWS service to wire up. Move to S3 if invoice volume/size ever gets heavy.
+  pdfData       Bytes
+  createdAt     DateTime    @default(now())
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// Singleton row (id always "singleton") holding the outbound-mail connection the admin panel
+// configures — password-reset and order-confirmation emails read this instead of env vars, so
+// it can be changed from the UI without a redeploy.
+model MailSettings {
+  id        String   @id @default("singleton")
+  smtpHost  String?
+  smtpPort  Int?
+  smtpUser  String?
+  smtpPass  String?
+  fromEmail String?
+  fromName  String?
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Bet {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  gameKey      String
+  stake        Int
+  payout       Int
+  serverSeed   String
+  clientSeed   String
+  nonce        BigInt
+  resultJson   String
+  createdAt    DateTime @default(now())
+}
