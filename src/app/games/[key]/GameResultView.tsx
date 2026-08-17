@@ -24,7 +24,7 @@ function Card({ card, index, resultKey }: { card: string; index: number; resultK
   return (
     <motion.div
       key={`${resultKey}-${index}`}
-      className="w-28 h-[157px] sm:w-36 sm:h-[201px] drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]"
+      className="w-16 h-[90px] sm:w-28 sm:h-[157px] lg:w-36 lg:h-[201px] drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]"
       style={{ perspective: 400 }}
       initial={{ rotateY: 180, opacity: 0 }}
       animate={{ rotateY: 0, opacity: 1 }}
@@ -36,7 +36,7 @@ function Card({ card, index, resultKey }: { card: string; index: number; resultK
 }
 
 function CardRow({ cards, resultKey }: { cards: string[]; resultKey: string }) {
-  return <div className="flex gap-3 justify-center">{cards.map((c, i) => <Card key={i} card={c} index={i} resultKey={resultKey} />)}</div>;
+  return <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">{cards.map((c, i) => <Card key={i} card={c} index={i} resultKey={resultKey} />)}</div>;
 }
 
 function Reel({ symbol, index, resultKey }: { symbol: string; index: number; resultKey: string }) {
@@ -338,7 +338,7 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
         // the rest shows what would have happened, so the grid isn't just one lone icon.
         return (
           <div>
-            <div className="grid grid-cols-5 gap-2 sm:gap-3 w-fit mx-auto">
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-3 w-fit mx-auto">
               {grid.map((isMine, i) => {
                 const picked = i < picks;
                 return (
@@ -347,7 +347,7 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
                     initial={{ scale: 0.4, opacity: 0 }}
                     animate={{ scale: 1, opacity: picked ? 1 : 0.55 }}
                     transition={{ delay: i * 0.03, duration: 0.25, type: "spring" }}
-                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center p-3 ${
+                    className={`w-12 h-12 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center p-2 sm:p-3 ${
                       isMine ? "bg-red-700" : "bg-emerald-700"
                     } ${picked ? "ring-3 ring-amber-400 shadow-[0_0_24px_-2px_rgba(245,158,11,0.9)]" : ""}`}
                   >
@@ -388,7 +388,7 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
       return (
         <div>
           <p className="text-center text-sm text-zinc-400 mb-2">Numbers drawn — gold ring = one of your picks</p>
-          <div className="grid grid-cols-8 gap-1.5 w-fit mx-auto">
+          <div className="grid grid-cols-8 gap-1 sm:gap-1.5 w-fit mx-auto">
             {drawn.sort((a, b) => a - b).map((n, i) => {
               const isPick = picks.includes(n);
               return (
@@ -397,7 +397,7 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: i * 0.05, type: "spring" }}
-                  className={`w-11 h-11 rounded-lg font-bold flex items-center justify-center text-base ${
+                  className={`w-8 h-8 sm:w-11 sm:h-11 rounded-lg font-bold flex items-center justify-center text-xs sm:text-base ${
                     isPick
                       ? "bg-amber-500 text-zinc-950 ring-3 ring-emerald-400 shadow-[0_0_16px_-2px_rgba(16,185,129,0.9)]"
                       : "bg-zinc-800 text-zinc-400"
