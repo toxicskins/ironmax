@@ -27,7 +27,13 @@ export default function RegisterPage() {
       setError(body.error ?? "Registration failed");
       return;
     }
-    await signIn("credentials", { email, password, redirect: false });
+    try {
+      await signIn("credentials", { email, password, redirect: false });
+    } catch {
+      setLoading(false);
+      setError("Account created, but automatic login failed — please log in manually.");
+      return;
+    }
     // Full navigation — see the comment in login/page.tsx for why router.push() left the
     // header stale after sign-in.
     window.location.href = "/account";

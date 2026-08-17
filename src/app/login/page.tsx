@@ -15,8 +15,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const res = await signIn("credentials", { email, password, redirect: false });
-    if (res?.error) { setLoading(false); setError("Invalid email or password"); return; }
+    try {
+      const res = await signIn("credentials", { email, password, redirect: false });
+      if (res?.error) { setLoading(false); setError("Invalid email or password"); return; }
+    } catch {
+      setLoading(false);
+      setError("Something went wrong. Please try again.");
+      return;
+    }
     // A full navigation instead of router.push() — server components like the header nav
     // read the session at request time, and client-side routing can race with or reuse a
     // cached RSC payload from before the session cookie was set, leaving a stale logged-out
