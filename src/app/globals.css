@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
+/* IRONMAX is a dark-only design — always dark regardless of the visitor's OS/browser
+   color-scheme preference, so no prefers-color-scheme media query here. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,11 +14,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
+  background: var(--background);
 }
 
 body {
