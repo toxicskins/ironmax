@@ -166,6 +166,91 @@ function Coin({ side, resultKey }: { side: string; resultKey: string }) {
   );
 }
 
+// Multipliers span 1.01x to (theoretically) thousands of x, so a linear height would pin almost
+// every real roll to the very bottom pixel — log-scale the climb instead, capped at a "ceiling"
+// multiplier so anything above it just reads as "off the top of the sky".
+const LIMBO_SKY_CEILING = 50;
+function limboHeightFrac(mult: number) {
+  return Math.min(1, Math.log(Math.max(mult, 1)) / Math.log(LIMBO_SKY_CEILING));
+}
+
+/** A rocket climbs a starfield toward a dashed target line — cleared it (win) or sputtered out
+ * below it (loss) — instead of a bare number appearing out of nowhere. */
+function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
+  targetMult: number; rolledMult: number; cleared: boolean; resultKey: string;
+}) {
+  const targetFrac = limboHeightFrac(targetMult);
+  const rolledFrac = limboHeightFrac(rolledMult);
+  const rocketBottom = `${6 + rolledFrac * 82}%`;
+
+  return (
+    <div className="w-full max-w-md flex flex-col items-center gap-3">
+      <div className="relative w-full h-64 rounded-xl overflow-hidden border border-indigo-500/20"
+        style={{ background: "radial-gradient(ellipse 90% 60% at 50% 100%, rgba(99,102,241,0.15) 0%, transparent 70%), linear-gradient(180deg, #0a0a14 0%, #050508 100%)" }}
+      >
+        {/* starfield */}
+        {[12, 22, 34, 48, 58, 68, 78, 88, 18, 42, 62, 82, 30, 92].map((left, i) => (
+          <span
+            key={i}
+            className="absolute w-[3px] h-[3px] rounded-full bg-white/50"
+            style={{ left: `${left}%`, top: `${(i * 37) % 90 + 3}%` }}
+          />
+        ))}
+
+        {/* dashed target line */}
+        <div
+          className="absolute left-0 right-0 border-t border-dashed border-amber-400/50"
+          style={{ bottom: `${6 + targetFrac * 82}%` }}
+        >
+          <span className="absolute right-1.5 -top-4 text-[10px] font-semibold text-amber-400/80">
+            target {targetMult.toFixed(2)}x
+          </span>
+        </div>
+
+        {/* exhaust trail */}
+        <motion.div
+          key={`${resultKey}-trail`}
+          className="absolute left-1/2 -translate-x-1/2 w-1 rounded-full"
+          style={{ background: "linear-gradient(180deg, rgba(251,191,36,0.7), transparent)", bottom: "2%" }}
+          initial={{ height: 0, opacity: 0.9 }}
+          animate={{ height: rocketBottom, opacity: [0.9, 0.9, 0] }}
+          transition={{ duration: 1.4, ease: [0.3, 0, 0.6, 1], times: [0, 0.85, 1] }}
+        />
+
+        {/* the rocket itself */}
+        <motion.div
+          key={resultKey}
+          className="absolute left-1/2 text-3xl drop-shadow-[0_0_14px_rgba(245,158,11,0.7)]"
+          style={{ bottom: "2%", marginLeft: -16 }}
+          initial={{ bottom: "2%", opacity: 0, rotate: -8 }}
+          animate={{
+            bottom: rocketBottom,
+            opacity: 1,
+            rotate: cleared ? [-8, 6, -4, 0] : [-8, 10, -14, -35],
+          }}
+          transition={{ duration: 1.4, ease: [0.22, 0.9, 0.3, 1] }}
+        >
+          {cleared ? "🚀" : "💥"}
+        </motion.div>
+      </div>
+
+      <motion.div
+        key={`${resultKey}-readout`}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, duration: 0.4 }}
+        className={`text-4xl font-extrabold tabular-nums ${cleared ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.6)]" : "text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.5)]"}`}
+      >
+        {rolledMult.toFixed(2)}x
+      </motion.div>
+      <div className="w-full text-sm text-zinc-500 flex justify-between">
+        <span>target: <span className="text-zinc-300 font-semibold">{targetMult.toFixed(2)}x</span></span>
+        <span>{cleared ? "cleared" : "missed"}</span>
+      </div>
+    </div>
+  );
+}
+
 // Mirrors the payout table in src/lib/games/registry.ts (plinko) — display-only, not re-derived from the server.
 const PLINKO_PAYOUTS = [0.354, 0.72, 0.96, 1.68, 3.6, 8.9, 43.2];
 
@@ -338,23 +423,12 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
       if (gameKey === "limbo") {
         const targetMult = 9600 / Math.max(targetBp, 1);
         const rolledMult = 9600 / Math.max(roll, 1);
-        return (
-          <div className="w-full max-w-md flex flex-col items-center gap-3">
-            <motion.div
-              key={resultKey}
-              initial={{ y: 60, scale: 0.7, opacity: 0 }}
-              animate={{ y: 0, scale: 1, opacity: 1 }}
-              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-              className={`text-5xl font-extrabold tabular-nums ${win ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.6)]" : "text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.5)]"}`}
-            >
-              ↑ {rolledMult.toFixed(2)}x
-            </motion.div>
-            <div className="w-full text-sm text-zinc-500 flex justify-between">
-              <span>target: <span className="text-zinc-300 font-semibold">{targetMult.toFixed(2)}x</span></span>
-              <span>{win ? "cleared" : "missed"}</span>
-            </div>
-          </div>
-        );
+        // Whether the rocket physically cleared the dashed target line is its own question from
+        // whether the round was net-profitable (the `win` prop, used by the banner outside this
+        // component) — a stake of 1 rounding a win down to net 0 shouldn't make an actually-cleared
+        // roll draw as an explosion below the line it visibly passed.
+        const cleared = roll < targetBp;
+        return <LimboLaunch targetMult={targetMult} rolledMult={rolledMult} cleared={cleared} resultKey={resultKey} />;
       }
 
       const targetPct = (targetBp / 9999) * 100;

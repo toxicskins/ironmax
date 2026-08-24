@@ -20,7 +20,7 @@ type BetResponse = {
 // How long each category's GameResultView animation takes to settle, so the win/loss
 // banner never spoils the outcome before the player has watched it play out.
 const REVEAL_DELAY_MS: Record<string, number> = {
-  slots: 3800, dice: 1100, wheel: 4200, board: 2000, cards: 1400, crash: 1800,
+  slots: 3800, dice: 1700, wheel: 4200, board: 2000, cards: 1400, crash: 1800,
 };
 
 const GAMES_WITH_CONTROLS = new Set(["dice", "limbo", "coinflip", "roulette", "mines", "tower", "keno"]);
