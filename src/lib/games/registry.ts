@@ -25,6 +25,19 @@ function invalidTargetBp(targetBp: unknown): string | null {
   return null;
 }
 
+// Dice Roll's own, stricter ceiling — 80% win chance (not the shared 95% MAX_TARGET_BP, which
+// Limbo also relies on for its low-target end) so the lowest possible payout is 0.96/0.8 = 1.2x,
+// never the near-breakeven ~1.01x a 95% win chance produced.
+const DICE_MAX_TARGET_BP = 8000;
+function invalidDiceTargetBp(targetBp: unknown): string | null {
+  const err = invalidTargetBp(targetBp);
+  if (err) return err;
+  if (targetBp !== undefined && targetBp !== null && Number(targetBp) > DICE_MAX_TARGET_BP) {
+    return `targetBp must be at most ${DICE_MAX_TARGET_BP} (80% win chance)`;
+  }
+  return null;
+}
+
 const CARD_RANKS = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
 const CARD_SUITS = ["♠","♥","♦","♣"];
 function freshDeck() {
@@ -97,15 +110,15 @@ export const GAMES: GameDef[] = [
     // and whole-coin rounding on a stake of 1 floors the payout back down to the stake itself
     // (a "win" that nets 0). A stake of 5 keeps a real margin above that rounding floor.
     key: "dice", name: "Dice Roll", category: "dice", minStake: 5, maxStake: 1000,
-    description: "Pick a target 1–99%. A number from 0–9999 is rolled — win if it lands under your target. Lower target, higher payout.",
+    description: "Pick a target 1–80%. A number from 0–9999 is rolled — win if it lands under your target. Lower target, higher payout.",
     rules: [
-      "Pick a win chance from 1% to 95%",
+      "Pick a win chance from 1% to 80%",
       "A number 0–9999 is rolled; you win if it lands below your chosen chance",
-      "Payout on a win = 0.96 ÷ (win chance) — e.g. a 48% chance pays exactly 2x",
+      "Payout on a win = 0.96 ÷ (win chance) — e.g. a 48% chance pays exactly 2x, the max 80% chance pays 1.2x",
       "Miss the roll: lose your stake",
     ],
     play: (next, params) => rollUnder(next, Number(params?.targetBp ?? 5000)),
-    validateParams: (params) => invalidTargetBp(params?.targetBp),
+    validateParams: (params) => invalidDiceTargetBp(params?.targetBp),
   },
   {
     key: "limbo", name: "Limbo", category: "dice", minStake: 1, maxStake: 1000,

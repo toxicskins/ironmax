@@ -45,7 +45,7 @@ function DiceControls({ onChange }: { onChange: (p: BetParams) => void }) {
 
   return (
     <Row label="Win chance">
-      <input type="range" min={1} max={95} value={winChancePct} onChange={(e) => update(Number(e.target.value))} className="flex-1 min-w-[120px]" />
+      <input type="range" min={1} max={80} value={winChancePct} onChange={(e) => update(Number(e.target.value))} className="flex-1 min-w-[120px]" />
       <span className="text-sm font-semibold text-amber-400 w-14">{winChancePct}%</span>
       <span className="text-xs text-zinc-500">pays {payout}x</span>
       <input type="hidden" value={targetBp} readOnly />
