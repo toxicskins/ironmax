@@ -231,7 +231,7 @@ export const GAMES: GameDef[] = [
     description: "The ball bounces down 12 rows of pegs. Buckets near the edges pay far more than the ones in the middle.",
     rules: [
       "The ball bounces through 12 rows of pegs into one of 13 buckets",
-      "Center buckets (most likely): 0.36x–0.96x",
+      "Center buckets (most likely): 0.354x–0.96x",
       "Mid buckets: 1.68x–3.6x",
       "Near-edge buckets: 8.9x",
       "Outermost buckets (rarest): 43.2x",
@@ -243,8 +243,11 @@ export const GAMES: GameDef[] = [
       const mid = rows / 2;
       const dist = Math.abs(bucket - mid);
       // Indexed by distance from center: the center (most likely landing spot) pays under 1x,
-      // the rare edge buckets pay the jackpot.
-      const payouts = [0.36, 0.72, 0.96, 1.68, 3.6, 8.9, 43.2];
+      // the rare edge buckets pay the jackpot. With 12 rows every bucket's landing probability
+      // is a fixed binomial(12, 0.5) weight, so this table's RTP is exactly computable — 0.354
+      // (not 0.36) on the center bucket is what makes the weighted average land on 96.00% RTP
+      // instead of 96.14%.
+      const payouts = [0.354, 0.72, 0.96, 1.68, 3.6, 8.9, 43.2];
       const multiplier = payouts[Math.min(dist, payouts.length - 1)];
       return { multiplier, detail: { bucket, rows } };
     },
