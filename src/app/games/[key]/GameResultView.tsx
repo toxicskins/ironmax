@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import * as deck from "@letele/playing-cards";
 import {
@@ -176,15 +176,25 @@ function PlinkoBoard({ bucket, rows, resultKey }: { bucket: number; rows: number
   const yKeyframes = Array.from({ length: steps + 1 }, (_, i) => (i / steps) * 88 + 4);
 
   const mid = rows / 2;
+  // Peg board is a triangle (3 pegs at the top row, widening by one every row) like a real
+  // Plinko/Galton board — a uniform block of dots made every row look equally reachable,
+  // which read as "the ball can't fall toward the edges/big multipliers".
   const pegRows = Math.min(rows, 10);
+  const firstRowPegs = 3;
+
+  // Only reveal which bucket actually won once the ball's fall animation has actually
+  // finished — highlighting the landing bucket from the first frame (before the ball even
+  // started dropping) spoiled the outcome and looked like the ball couldn't reach it.
+  const [landed, setLanded] = useState(false);
+  useEffect(() => { setLanded(false); }, [resultKey]);
 
   return (
     <div className="flex flex-col items-center gap-3 w-full max-w-md">
       <div className="relative w-full h-56 rounded-xl bg-black/30 border border-emerald-500/20 overflow-hidden">
         <div className="absolute inset-0 flex flex-col justify-evenly py-3">
           {Array.from({ length: pegRows }, (_, r) => (
-            <div key={r} className="flex justify-center gap-4" style={{ paddingLeft: r % 2 ? 10 : 0 }}>
-              {Array.from({ length: 6 + (r % 2) }, (_, c) => (
+            <div key={r} className="flex justify-center gap-4">
+              {Array.from({ length: firstRowPegs + r }, (_, c) => (
                 <span key={c} className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
               ))}
             </div>
@@ -197,13 +207,14 @@ function PlinkoBoard({ bucket, rows, resultKey }: { bucket: number; rows: number
           initial={{ left: "50%", top: "4%" }}
           animate={{ left: xKeyframes.map((x) => `${x}%`), top: yKeyframes.map((y) => `${y}%`) }}
           transition={{ duration: 1.6, ease: "easeIn", times: yKeyframes.map((y) => (y - 4) / 88) }}
+          onAnimationComplete={() => setLanded(true)}
         />
       </div>
       <div className="flex gap-1 justify-center w-full overflow-x-auto">
         {Array.from({ length: bucketCount }, (_, i) => {
           const dist = Math.abs(i - mid);
           const payout = PLINKO_PAYOUTS[Math.min(Math.round(dist), PLINKO_PAYOUTS.length - 1)];
-          const isLanded = i === bucket;
+          const isLanded = landed && i === bucket;
           return (
             <motion.div
               key={i}
