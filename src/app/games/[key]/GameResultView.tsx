@@ -58,23 +58,31 @@ function Reel({ symbol, index, resultKey }: { symbol: string; index: number; res
   const duration = 1.5 + index * 0.25;
 
   return (
-    <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl bg-zinc-950 border-2 border-amber-500/30 shadow-[0_0_20px_-4px_rgba(245,158,11,0.5)] overflow-hidden flex items-center justify-center">
-      <motion.div
-        key={resultKey}
-        className="flex flex-col items-center"
-        initial={{ y: 0 }}
-        animate={{ y: -(strip.length - 1) * itemSize }}
-        transition={{ delay, duration, ease: [0.12, 0.8, 0.2, 1] }}
-      >
-        {strip.map((s, i) => {
-          const SIcon = SYMBOL_ICON[s];
-          return (
-            <div key={i} className="w-28 h-28 shrink-0 flex items-center justify-center">
-              {SIcon ? <SIcon className="w-full h-full" /> : s}
-            </div>
-          );
-        })}
-      </motion.div>
+    <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-xl bg-zinc-950 border-2 border-amber-500/30 shadow-[0_0_20px_-4px_rgba(245,158,11,0.5)]">
+      {/* Fixed-size viewport exactly one item tall, centered in the (slightly larger) decorative
+          frame — the strip below is positioned in this viewport's own top-anchored coordinate
+          space, not the frame's, so the animation math (move up N * itemSize) lines up with what
+          actually ends up visible instead of fighting the frame's flex-centering. */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative overflow-hidden" style={{ width: itemSize, height: itemSize }}>
+          <motion.div
+            key={resultKey}
+            className="absolute top-0 left-0 w-full flex flex-col items-center"
+            initial={{ y: 0 }}
+            animate={{ y: -(strip.length - 1) * itemSize }}
+            transition={{ delay, duration, ease: [0.12, 0.8, 0.2, 1] }}
+          >
+            {strip.map((s, i) => {
+              const SIcon = SYMBOL_ICON[s];
+              return (
+                <div key={i} className="shrink-0 flex items-center justify-center" style={{ width: itemSize, height: itemSize }}>
+                  {SIcon ? <SIcon className="w-full h-full" /> : s}
+                </div>
+              );
+            })}
+          </motion.div>
+        </div>
+      </div>
     </div>
   );
 }
