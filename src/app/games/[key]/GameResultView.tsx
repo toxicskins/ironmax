@@ -159,7 +159,7 @@ function Coin({ side, resultKey }: { side: string; resultKey: string }) {
 }
 
 // Mirrors the payout table in src/lib/games/registry.ts (plinko) — display-only, not re-derived from the server.
-const PLINKO_PAYOUTS = [0.4, 0.7, 1, 1.7, 3.5, 9, 45];
+const PLINKO_PAYOUTS = [0.36, 0.72, 0.96, 1.68, 3.6, 8.9, 43.2];
 
 /** A real peg-board: the ball zigzags row by row and converges on the landed bucket, instead of a flat row of dots. */
 function PlinkoBoard({ bucket, rows, resultKey }: { bucket: number; rows: number; resultKey: string }) {
