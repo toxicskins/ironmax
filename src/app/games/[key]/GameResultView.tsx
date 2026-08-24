@@ -191,15 +191,30 @@ function PlinkoBoard({ bucket, rows, resultKey }: { bucket: number; rows: number
   return (
     <div className="flex flex-col items-center gap-3 w-full max-w-md">
       <div className="relative w-full h-56 rounded-xl bg-black/30 border border-emerald-500/20 overflow-hidden">
-        <div className="absolute inset-0 flex flex-col justify-evenly py-3">
-          {Array.from({ length: pegRows }, (_, r) => (
-            <div key={r} className="flex justify-center gap-4">
-              {Array.from({ length: firstRowPegs + r }, (_, c) => (
-                <span key={c} className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-              ))}
+        {Array.from({ length: pegRows }, (_, r) => {
+          const count = firstRowPegs + r;
+          // How much of the board's width this row's pegs spread across — narrow near the
+          // top, reaching (almost) the full 0–100% by the bottom row so the peg field actually
+          // covers the same coordinate space the ball travels and the bucket row below spans,
+          // instead of a fixed-width block that left the edge buckets outside the peg field.
+          const widthFrac = 0.28 + 0.72 * (pegRows > 1 ? r / (pegRows - 1) : 1);
+          const top = 6 + (pegRows > 1 ? (r / (pegRows - 1)) * 82 : 0);
+          return (
+            <div key={r} className="absolute left-0 right-0" style={{ top: `${top}%` }}>
+              {Array.from({ length: count }, (_, c) => {
+                const frac = count > 1 ? c / (count - 1) - 0.5 : 0;
+                const left = 50 + frac * widthFrac * 100;
+                return (
+                  <span
+                    key={c}
+                    className="absolute w-1.5 h-1.5 rounded-full bg-zinc-600 -translate-x-1/2 -translate-y-1/2"
+                    style={{ left: `${left}%` }}
+                  />
+                );
+              })}
             </div>
-          ))}
-        </div>
+          );
+        })}
         <motion.div
           key={resultKey}
           className="absolute w-4 h-4 rounded-full bg-amber-400 shadow-[0_0_14px_rgba(245,158,11,0.9)]"
