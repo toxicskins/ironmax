@@ -1,4 +1,5 @@
 "use client";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import * as deck from "@letele/playing-cards";
 import {
@@ -39,18 +40,40 @@ function CardRow({ cards, resultKey }: { cards: string[]; resultKey: string }) {
   return <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">{cards.map((c, i) => <Card key={i} card={c} index={i} resultKey={resultKey} />)}</div>;
 }
 
+const ALL_SLOT_SYMBOLS = Object.keys(SYMBOL_ICON);
+
+// A reel that visibly spins through a strip of random filler symbols before landing on the
+// real result — each reel stops a bit later than the last, like a real slot machine — instead
+// of the old instant blur-drop-in that was over before you could see it happen.
 function Reel({ symbol, index, resultKey }: { symbol: string; index: number; resultKey: string }) {
-  const Icon = SYMBOL_ICON[symbol];
+  const itemSize = 112; // px, matches the w-28/h-28 filler cell below (7rem)
+  const strip = useMemo(() => {
+    const fillerCount = 14;
+    const filler = Array.from({ length: fillerCount }, () => ALL_SLOT_SYMBOLS[Math.floor(Math.random() * ALL_SLOT_SYMBOLS.length)]);
+    return [...filler, symbol];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultKey]);
+
+  const delay = index * 0.25;
+  const duration = 1.5 + index * 0.25;
+
   return (
     <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl bg-zinc-950 border-2 border-amber-500/30 shadow-[0_0_20px_-4px_rgba(245,158,11,0.5)] overflow-hidden flex items-center justify-center">
       <motion.div
-        key={`${resultKey}-${index}`}
-        className="w-24 h-24 sm:w-28 sm:h-28"
-        initial={{ y: -180, filter: "blur(8px)" }}
-        animate={{ y: 0, filter: "blur(0px)" }}
-        transition={{ delay: index * 0.12, duration: 0.5, ease: "easeOut" }}
+        key={resultKey}
+        className="flex flex-col items-center"
+        initial={{ y: 0 }}
+        animate={{ y: -(strip.length - 1) * itemSize }}
+        transition={{ delay, duration, ease: [0.12, 0.8, 0.2, 1] }}
       >
-        {Icon ? <Icon className="w-full h-full" /> : symbol}
+        {strip.map((s, i) => {
+          const SIcon = SYMBOL_ICON[s];
+          return (
+            <div key={i} className="w-28 h-28 shrink-0 flex items-center justify-center">
+              {SIcon ? <SIcon className="w-full h-full" /> : s}
+            </div>
+          );
+        })}
       </motion.div>
     </div>
   );
@@ -66,7 +89,7 @@ function SpinWheel({ segments, targetIndex, resultKey, size = 300 }: {
   const n = segments.length;
   const step = 360 / n;
   const gradient = segments.map((s, i) => `${s.color} ${i * step}deg ${(i + 1) * step}deg`).join(", ");
-  const targetAngle = 5 * 360 - (targetIndex * step + step / 2);
+  const targetAngle = 8 * 360 - (targetIndex * step + step / 2);
   const showLabels = n <= 8;
 
   return (
@@ -79,7 +102,7 @@ function SpinWheel({ segments, targetIndex, resultKey, size = 300 }: {
           style={{ backgroundImage: `conic-gradient(${gradient})` }}
           initial={{ rotate: 0 }}
           animate={{ rotate: targetAngle }}
-          transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 4, ease: [0.14, 0.9, 0.2, 1] }}
         >
           {showLabels && segments.map((s, i) => (
             <div
@@ -256,6 +279,12 @@ const WHEEL_SEGMENTS = [
   { label: "3.5x", color: "#3f3f46", mult: 3.5 }, { label: "12x", color: "#dc2626", mult: 12 },
 ];
 const ROULETTE_RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+// Real European single-zero wheel order (not sequential 0–36) — using plain 0..36 order made
+// same-color numbers cluster next to each other on the drawn wheel, which read as "duplicate"
+// segments even though every number is still only there once.
+const ROULETTE_WHEEL_ORDER = [
+  0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,
+];
 
 export function GameResultView({ category, gameKey, detail, win }: { category: string; gameKey: string; detail: Record<string, unknown>; win: boolean }) {
   const resultKey = JSON.stringify(detail);
@@ -279,12 +308,12 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
           <div className="w-full max-w-md flex flex-col items-center gap-3">
             <motion.div
               key={resultKey}
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              initial={{ y: 60, scale: 0.7, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
               className={`text-5xl font-extrabold tabular-nums ${win ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.6)]" : "text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.5)]"}`}
             >
-              {rolledMult.toFixed(2)}x
+              ↑ {rolledMult.toFixed(2)}x
             </motion.div>
             <div className="w-full text-sm text-zinc-500 flex justify-between">
               <span>target: <span className="text-zinc-300 font-semibold">{targetMult.toFixed(2)}x</span></span>
@@ -319,11 +348,12 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
       }
       if ("number" in detail) {
         const number = detail.number as number;
-        const segments = Array.from({ length: 37 }, (_, n) => ({
+        const segments = ROULETTE_WHEEL_ORDER.map((n) => ({
           label: String(n),
           color: n === 0 ? "#059669" : ROULETTE_RED.has(n) ? "#dc2626" : "#18181b",
         }));
-        return <SpinWheel segments={segments} targetIndex={number} resultKey={resultKey} size={400} />;
+        const targetIndex = ROULETTE_WHEEL_ORDER.indexOf(number);
+        return <SpinWheel segments={segments} targetIndex={targetIndex} resultKey={resultKey} size={400} />;
       }
       const segment = detail.segment as number;
       const targetIndex = Math.max(0, WHEEL_SEGMENTS.findIndex((s) => s.mult === segment));
@@ -491,7 +521,13 @@ export function IdlePreview({ category, gameKey }: { category: string; gameKey: 
     );
   }
   if (category === "wheel") {
-    if (gameKey === "coinflip") return <IconCoinFace label="?" className="w-24 h-24" />;
+    if (gameKey === "coinflip") {
+      return (
+        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 border-4 border-amber-200 flex items-center justify-center text-sm font-extrabold text-zinc-950 drop-shadow-[0_0_20px_-4px_rgba(245,158,11,0.6)]">
+          HEADS
+        </div>
+      );
+    }
     const isRoulette = gameKey === "roulette";
     const colors = isRoulette
       ? ["#dc2626", "#18181b", "#dc2626", "#18181b", "#059669", "#18181b", "#dc2626", "#18181b"]

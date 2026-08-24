@@ -20,7 +20,7 @@ type BetResponse = {
 // How long each category's GameResultView animation takes to settle, so the win/loss
 // banner never spoils the outcome before the player has watched it play out.
 const REVEAL_DELAY_MS: Record<string, number> = {
-  slots: 1300, dice: 1100, wheel: 2400, board: 2000, cards: 1400, crash: 1800,
+  slots: 3800, dice: 1100, wheel: 4200, board: 2000, cards: 1400, crash: 1800,
 };
 
 const GAMES_WITH_CONTROLS = new Set(["dice", "limbo", "coinflip", "roulette", "mines", "tower", "keno"]);
@@ -93,7 +93,7 @@ export function GamePlayer({
     revealTimer.current = setTimeout(() => {
       setRevealed(true);
       setCoins((c) => c + body.netDelta);
-      if (body.payout > 0) {
+      if (body.netDelta > 0) {
         const big = body.payout >= stake * 5;
         confetti({
           particleCount: big ? 160 : 70,
@@ -119,11 +119,11 @@ export function GamePlayer({
 
         <div
           className={`relative min-h-[42vh] sm:min-h-[62vh] rounded-xl border-2 flex items-center justify-center overflow-hidden px-3 py-6 sm:px-4 sm:py-10 transition-colors duration-500 ${
-            revealed && result?.payout ? "border-emerald-400/50" : theme.border
+            revealed && result && result.netDelta > 0 ? "border-emerald-400/50" : theme.border
           }`}
           style={{
             background: theme.radial,
-            boxShadow: revealed && result?.payout ? "0 0 100px -10px rgba(16,185,129,0.45)" : `0 0 80px -20px ${theme.glow}`,
+            boxShadow: revealed && result && result.netDelta > 0 ? "0 0 100px -10px rgba(16,185,129,0.45)" : `0 0 80px -20px ${theme.glow}`,
           }}
         >
           {/* faint dot-grid so the stage reads as a textured table felt, not a flat gradient */}
@@ -161,7 +161,7 @@ export function GamePlayer({
             </div>
           ) : result ? (
             <div className="relative z-10 flex flex-col items-center gap-6 w-full">
-              <GameResultView category={category} gameKey={gameKey} detail={result.detail} win={result.payout > 0} />
+              <GameResultView category={category} gameKey={gameKey} detail={result.detail} win={result.netDelta > 0} />
 
               {!revealed && (
                 <motion.p
@@ -180,15 +180,19 @@ export function GamePlayer({
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     transition={{ type: "spring", stiffness: 260, damping: 18 }}
                     className={`rounded-2xl px-8 py-4 border-2 ${
-                      result.payout > 0
+                      result.netDelta > 0
                         ? "bg-emerald-950/80 border-emerald-400/60 shadow-[0_0_40px_-6px_rgba(16,185,129,0.7)]"
                         : "bg-zinc-950/80 border-red-500/40 shadow-[0_0_30px_-6px_rgba(239,68,68,0.4)]"
                     }`}
                   >
-                    <p className={`text-2xl sm:text-3xl font-extrabold text-center ${result.payout > 0 ? "text-emerald-400 drop-shadow-[0_0_16px_rgba(16,185,129,0.6)]" : "text-red-400"}`}>
-                      {result.payout > 0 ? (
+                    <p className={`text-2xl sm:text-3xl font-extrabold text-center ${result.netDelta > 0 ? "text-emerald-400 drop-shadow-[0_0_16px_rgba(16,185,129,0.6)]" : "text-red-400"}`}>
+                      {result.netDelta > 0 ? (
                         <span className="inline-flex items-baseline gap-1.5">
                           +<SlotCounter value={result.payout} duration={0.7} /> points
+                        </span>
+                      ) : result.payout > 0 ? (
+                        <span className="inline-flex items-baseline gap-1.5 text-xl sm:text-2xl">
+                          Partial return: <SlotCounter value={result.payout} duration={0.7} /> points
                         </span>
                       ) : "No win this time"}
                     </p>

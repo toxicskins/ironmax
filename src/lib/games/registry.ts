@@ -93,7 +93,10 @@ export const GAMES: GameDef[] = [
     play: (next) => spinSlots(next, SLOT_SYMBOLS_FRUITS, 5, SLOT_PAYTABLE_FRUITS),
   },
   {
-    key: "dice", name: "Dice Roll", category: "dice", minStake: 1, maxStake: 1000,
+    // minStake 5 (not 1) — at a high win-chance the payout multiplier sits just above 1.0x,
+    // and whole-coin rounding on a stake of 1 floors the payout back down to the stake itself
+    // (a "win" that nets 0). A stake of 5 keeps a real margin above that rounding floor.
+    key: "dice", name: "Dice Roll", category: "dice", minStake: 5, maxStake: 1000,
     description: "Pick a target 1–99%. A number from 0–9999 is rolled — win if it lands under your target. Lower target, higher payout.",
     rules: [
       "Pick a win chance from 1% to 95%",

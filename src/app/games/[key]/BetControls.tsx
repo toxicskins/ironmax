@@ -55,9 +55,13 @@ function DiceControls({ onChange }: { onChange: (p: BetParams) => void }) {
 
 function LimboControls({ onChange }: { onChange: (p: BetParams) => void }) {
   const [target, setTarget] = useState(2);
+  // Raw text mirrors the input so the field can sit empty mid-edit — clamping on every
+  // keystroke used to snap an emptied field straight to 1.01, making it impossible to clear
+  // the box and type a bigger number.
+  const [text, setText] = useState("2");
   const winChancePct = Math.min(95, (0.96 / target) * 100);
 
-  function update(v: number) {
+  function commit(v: number) {
     const clamped = Math.min(96, Math.max(1.01, v));
     setTarget(clamped);
     onChange({ targetBp: Math.round((0.96 / clamped) * 10000) });
@@ -67,8 +71,13 @@ function LimboControls({ onChange }: { onChange: (p: BetParams) => void }) {
 
   return (
     <Row label="Target">
-      <input type="number" min={1.01} max={96} step={0.01} value={target}
-        onChange={(e) => update(Number(e.target.value) || 1.01)}
+      <input type="number" min={1.01} max={96} step={0.01} value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          const v = Number(e.target.value);
+          if (e.target.value !== "" && Number.isFinite(v)) commit(v);
+        }}
+        onBlur={() => setText(String(target))}
         className="w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1" />
       <span className="text-sm text-zinc-400">x</span>
       <span className="text-xs text-zinc-500">{winChancePct.toFixed(2)}% chance to win {target}x</span>
@@ -84,7 +93,8 @@ function CoinflipControls({ onChange }: { onChange: (p: BetParams) => void }) {
     <Row label="Call it">
       {(["heads", "tails"] as const).map((v) => (
         <button key={v} onClick={() => pick(v)}
-          className={`px-4 py-1.5 rounded-md text-sm font-semibold capitalize ${call === v ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
+          className={`px-4 py-1.5 rounded-md text-sm font-semibold capitalize flex items-center gap-1.5 ${call === v ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
+          <span aria-hidden>{v === "heads" ? "🪙" : "⚪"}</span>
           {v}
         </button>
       ))}
