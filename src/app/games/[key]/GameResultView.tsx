@@ -174,6 +174,9 @@ function limboHeightFrac(mult: number) {
   return Math.min(1, Math.log(Math.max(mult, 1)) / Math.log(LIMBO_SKY_CEILING));
 }
 
+const LIMBO_STARS = [12, 22, 34, 48, 58, 68, 78, 88, 18, 42, 62, 82, 30, 92, 5, 96, 40, 70];
+const LIMBO_FLIGHT_S = 1.4;
+
 /** A rocket climbs a starfield toward a dashed target line — cleared it (win) or sputtered out
  * below it (loss) — instead of a bare number appearing out of nowhere. */
 function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
@@ -183,19 +186,45 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
   const rolledFrac = limboHeightFrac(rolledMult);
   const rocketBottom = `${6 + rolledFrac * 82}%`;
 
+  // The rocket icon only swaps to the explosion right at touchdown, not for the whole flight —
+  // otherwise a loss just shows a fading-in 💥 the entire climb instead of a rocket that fails.
+  const [exploded, setExploded] = useState(false);
+  useEffect(() => {
+    setExploded(false);
+    if (!cleared) {
+      const t = setTimeout(() => setExploded(true), LIMBO_FLIGHT_S * 1000 * 0.92);
+      return () => clearTimeout(t);
+    }
+  }, [resultKey, cleared]);
+
   return (
     <div className="w-full max-w-md flex flex-col items-center gap-3">
-      <div className="relative w-full h-64 rounded-xl overflow-hidden border border-indigo-500/20"
+      <motion.div
+        className="relative w-full h-64 rounded-xl overflow-hidden border border-indigo-500/20"
         style={{ background: "radial-gradient(ellipse 90% 60% at 50% 100%, rgba(99,102,241,0.15) 0%, transparent 70%), linear-gradient(180deg, #0a0a14 0%, #050508 100%)" }}
+        animate={!cleared && exploded ? { x: [0, -6, 6, -4, 4, 0] } : {}}
+        transition={{ duration: 0.4 }}
       >
-        {/* starfield */}
-        {[12, 22, 34, 48, 58, 68, 78, 88, 18, 42, 62, 82, 30, 92].map((left, i) => (
-          <span
+        {/* twinkling starfield */}
+        {LIMBO_STARS.map((left, i) => (
+          <motion.span
             key={i}
-            className="absolute w-[3px] h-[3px] rounded-full bg-white/50"
+            className="absolute w-[3px] h-[3px] rounded-full bg-white/60"
             style={{ left: `${left}%`, top: `${(i * 37) % 90 + 3}%` }}
+            animate={{ opacity: [0.25, 0.9, 0.25] }}
+            transition={{ duration: 1.6 + (i % 5) * 0.3, repeat: Infinity, delay: (i % 7) * 0.2, ease: "easeInOut" }}
           />
         ))}
+
+        {/* launch-pad glow, pulses once as the rocket lifts off */}
+        <motion.div
+          key={`${resultKey}-pad`}
+          className="absolute left-1/2 -translate-x-1/2 rounded-full"
+          style={{ bottom: "-10px", width: 10, height: 10, background: "radial-gradient(circle, rgba(251,191,36,0.9), transparent 70%)" }}
+          initial={{ scale: 0.5, opacity: 0.9 }}
+          animate={{ scale: 6, opacity: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        />
 
         {/* dashed target line */}
         <div
@@ -213,14 +242,14 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
           className="absolute left-1/2 -translate-x-1/2 w-1 rounded-full"
           style={{ background: "linear-gradient(180deg, rgba(251,191,36,0.7), transparent)", bottom: "2%" }}
           initial={{ height: 0, opacity: 0.9 }}
-          animate={{ height: rocketBottom, opacity: [0.9, 0.9, 0] }}
-          transition={{ duration: 1.4, ease: [0.3, 0, 0.6, 1], times: [0, 0.85, 1] }}
+          animate={{ height: rocketBottom, opacity: exploded ? 0 : [0.9, 0.9, 0] }}
+          transition={{ duration: LIMBO_FLIGHT_S, ease: [0.3, 0, 0.6, 1], times: [0, 0.85, 1] }}
         />
 
-        {/* the rocket itself */}
+        {/* the rocket itself, with a flickering flame riding along underneath it */}
         <motion.div
           key={resultKey}
-          className="absolute left-1/2 text-3xl drop-shadow-[0_0_14px_rgba(245,158,11,0.7)]"
+          className="absolute left-1/2"
           style={{ bottom: "2%", marginLeft: -16 }}
           initial={{ bottom: "2%", opacity: 0, rotate: -8 }}
           animate={{
@@ -228,11 +257,24 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
             opacity: 1,
             rotate: cleared ? [-8, 6, -4, 0] : [-8, 10, -14, -35],
           }}
-          transition={{ duration: 1.4, ease: [0.22, 0.9, 0.3, 1] }}
+          transition={{ duration: LIMBO_FLIGHT_S, ease: [0.22, 0.9, 0.3, 1] }}
         >
-          {cleared ? "🚀" : "💥"}
+          <div className="relative">
+            {!exploded && (
+              <motion.span
+                className="absolute left-1/2 -translate-x-1/2 top-full text-base"
+                animate={{ opacity: [1, 0.4, 1], scale: [1, 0.7, 1] }}
+                transition={{ duration: 0.25, repeat: Infinity, ease: "easeInOut" }}
+              >
+                🔥
+              </motion.span>
+            )}
+            <span className="block text-3xl drop-shadow-[0_0_14px_rgba(245,158,11,0.7)]">
+              {exploded ? "💥" : "🚀"}
+            </span>
+          </div>
         </motion.div>
-      </div>
+      </motion.div>
 
       <motion.div
         key={`${resultKey}-readout`}
