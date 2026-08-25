@@ -277,56 +277,106 @@ export function IconCoinFace({ className, label }: IconProps & { label: string }
   );
 }
 
-/** Coin Flip's "heads" face — a spread-winged eagle, like a real coin obverse — instead of the
- * literal word HEADS. */
+const COIN_RIM_TICKS = Array.from({ length: 40 }, (_, i) => (i / 40) * Math.PI * 2);
+
+/** Coin Flip's "heads" face — an engraved eagle-head bust in profile, like a real coin obverse
+ * (reeded rim, layered shading, feather strokes) — instead of the literal word HEADS or a flat
+ * cartoon silhouette. */
 export function IconEagle({ className }: IconProps) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="none">
       <circle cx="24" cy="24" r="22" fill="url(#eagle-grad)" />
-      <circle cx="24" cy="24" r="22" stroke="#78350f" strokeWidth="1.5" />
-      <circle cx="24" cy="24" r="18" fill="none" stroke="rgba(120,53,15,0.35)" strokeWidth="1" strokeDasharray="2 2" />
+      <circle cx="24" cy="24" r="22" stroke="#5c2e0a" strokeWidth="1.5" />
+      {/* reeded edge, like a real minted coin */}
+      {COIN_RIM_TICKS.map((a, i) => (
+        <line
+          key={i}
+          x1={24 + 21.5 * Math.cos(a)} y1={24 + 21.5 * Math.sin(a)}
+          x2={24 + 19.5 * Math.cos(a)} y2={24 + 19.5 * Math.sin(a)}
+          stroke="rgba(92,46,10,0.35)" strokeWidth="0.6"
+        />
+      ))}
+      <circle cx="24" cy="24" r="18.5" fill="none" stroke="rgba(92,46,10,0.4)" strokeWidth="0.75" />
       <defs>
         <linearGradient id="eagle-grad" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#fde68a" />
-          <stop offset="1" stopColor="#d97706" />
+          <stop offset="1" stopColor="#b45309" />
         </linearGradient>
       </defs>
-      {/* wings */}
-      <path d="M23 20c-8-9-16-6-19-1 7 0 13 2 19 7z" fill="#78350f" />
-      <path d="M25 20c8-9 16-6 19-1-7 0-13 2-19 7z" fill="#78350f" />
-      {/* head + beak */}
-      <circle cx="24" cy="15" r="4" fill="#78350f" />
-      <path d="M24 14l5 1.4-5 2z" fill="#78350f" />
-      {/* body/tail */}
-      <path d="M19 25h10l-2 12h-6z" fill="#78350f" />
+      {/* eagle-head bust, profile facing left, layered for an engraved/embossed look */}
+      <g transform="translate(24,25)">
+        <path
+          d="M-11,15 C-11,4 -6,-5 3,-8 C9,-10 14,-7 15.5,-2.5 C16,1 13,2.5 9.5,1.5 C7,0.7 5,2.5 5,5.5 C5,9.5 9,10.5 9,15 Z"
+          fill="#78350f"
+        />
+        {/* crown highlight */}
+        <path d="M3,-8 C9,-10 14,-7 15.5,-2.5 C15.5,0.5 13,1.5 10,0.8 L6,-4 Z" fill="#a16207" opacity="0.75" />
+        {/* beak */}
+        <path d="M14.5,-3 L21,-1.2 L14.5,0.8 L16,-1.1 Z" fill="#fde68a" />
+        <path d="M14.5,-3 L21,-1.2 L14.5,0.8 L16,-1.1 Z" fill="none" stroke="#78350f" strokeWidth="0.5" />
+        {/* eye */}
+        <circle cx="11" cy="-3.2" r="1.15" fill="#1c1917" />
+        <circle cx="11.35" cy="-3.5" r="0.35" fill="#fde68a" />
+        {/* brow ridge */}
+        <path d="M6.5,-5.5 C9,-6.5 11.5,-6 13,-4.5" stroke="#5c2e0a" strokeWidth="0.7" fill="none" strokeLinecap="round" />
+        {/* feather texture strokes along the neck */}
+        {[[-8.5, 11, -2, 6], [-7, 13.5, -1, 8.5], [-4.5, 15, 1, 10.5], [-1.5, 15.3, 3.5, 11.5]].map(([x1, y1, x2, y2], i) => (
+          <path key={i} d={`M${x1},${y1} C${(x1 + x2) / 2},${(y1 + y2) / 2 - 1} ${x2},${y2 - 1} ${x2},${y2}`} stroke="#5c2e0a" strokeWidth="0.6" fill="none" strokeLinecap="round" opacity="0.7" />
+        ))}
+      </g>
     </svg>
   );
 }
 
-/** Coin Flip's "tails" face — a laurel-wreathed star, like a real coin reverse. */
+/** Coin Flip's "tails" face — a heraldic shield inside a full laurel wreath, like a real coin
+ * reverse (reeded rim, layered leaves, engraved shading) — instead of a flat silhouette. */
 export function IconLaurelStar({ className }: IconProps) {
+  const leaf = (x: number, y: number, angle: number, scale = 1) => (
+    <path
+      d="M0,0 C-1.6,-1.2 -1.6,-3.2 0,-4.6 C1.6,-3.2 1.6,-1.2 0,0 Z"
+      fill="#71717a"
+      stroke="#3f3f46"
+      strokeWidth="0.3"
+      transform={`translate(${x} ${y}) rotate(${angle}) scale(${scale})`}
+    />
+  );
+  const leftLeaves = [
+    [16, 32, -100], [14.2, 27, -85], [13.2, 21.5, -65], [13.5, 16, -40], [15.5, 11.5, -15],
+  ] as const;
+  const rightLeaves = leftLeaves.map(([x, y, a]) => [48 - x, y, -a] as const);
+
   return (
     <svg viewBox="0 0 48 48" className={className} fill="none">
       <circle cx="24" cy="24" r="22" fill="url(#tails-grad)" />
-      <circle cx="24" cy="24" r="22" stroke="#3f3f46" strokeWidth="1.5" />
-      <circle cx="24" cy="24" r="18" fill="none" stroke="rgba(63,63,70,0.4)" strokeWidth="1" strokeDasharray="2 2" />
+      <circle cx="24" cy="24" r="22" stroke="#27272a" strokeWidth="1.5" />
+      {COIN_RIM_TICKS.map((a, i) => (
+        <line
+          key={i}
+          x1={24 + 21.5 * Math.cos(a)} y1={24 + 21.5 * Math.sin(a)}
+          x2={24 + 19.5 * Math.cos(a)} y2={24 + 19.5 * Math.sin(a)}
+          stroke="rgba(39,39,42,0.35)" strokeWidth="0.6"
+        />
+      ))}
+      <circle cx="24" cy="24" r="18.5" fill="none" stroke="rgba(39,39,42,0.4)" strokeWidth="0.75" />
       <defs>
         <linearGradient id="tails-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#e4e4e7" />
-          <stop offset="1" stopColor="#a1a1aa" />
+          <stop offset="0" stopColor="#f4f4f5" />
+          <stop offset="1" stopColor="#8f8f97" />
         </linearGradient>
       </defs>
-      {/* laurel branches */}
-      <path d="M15 14c-5 5-6 14-2 21" stroke="#52525b" strokeWidth="2" fill="none" strokeLinecap="round" />
-      <path d="M33 14c5 5 6 14 2 21" stroke="#52525b" strokeWidth="2" fill="none" strokeLinecap="round" />
-      {[0, 1, 2, 3].map((i) => (
-        <ellipse key={`l-${i}`} cx={15 - i * 0.8} cy={19 + i * 4.5} rx="3" ry="1.6" fill="#52525b" transform={`rotate(${-40 + i * 10} ${15 - i * 0.8} ${19 + i * 4.5})`} />
-      ))}
-      {[0, 1, 2, 3].map((i) => (
-        <ellipse key={`r-${i}`} cx={33 + i * 0.8} cy={19 + i * 4.5} rx="3" ry="1.6" fill="#52525b" transform={`rotate(${40 - i * 10} ${33 + i * 0.8} ${19 + i * 4.5})`} />
-      ))}
-      {/* star */}
-      <path d="M24 15l2.5 6.5H33l-5.3 4 2 6.5-5.7-4-5.7 4 2-6.5-5.3-4h6.5z" fill="#52525b" />
+
+      {/* laurel wreath stems */}
+      <path d="M17 12c-6 5-8 15-3 24" stroke="#52525b" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <path d="M31 12c6 5 8 15 3 24" stroke="#52525b" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      {leftLeaves.map((l, i) => <g key={`l-${i}`}>{leaf(l[0], l[1], l[2])}</g>)}
+      {rightLeaves.map((l, i) => <g key={`r-${i}`}>{leaf(l[0], l[1], l[2])}</g>)}
+
+      {/* heraldic shield */}
+      <path d="M24 12 L33 15.5 V25 C33 33 24 38 24 38 C24 38 15 33 15 25 V15.5 Z" fill="#d4d4d8" stroke="#3f3f46" strokeWidth="0.75" />
+      <path d="M24 12 L33 15.5 V25 C33 30.5 28.5 34.7 24 37 Z" fill="#a1a1aa" opacity="0.6" />
+      <path d="M17.5 17 L30.5 17" stroke="#71717a" strokeWidth="0.6" />
+      {/* star centerpiece */}
+      <path d="M24 18l2 5.2h5.5l-4.4 3.4 1.6 5.4-4.7-3.4-4.7 3.4 1.6-5.4-4.4-3.4H22z" fill="#3f3f46" />
     </svg>
   );
 }
