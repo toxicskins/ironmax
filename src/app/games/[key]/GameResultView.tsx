@@ -558,19 +558,22 @@ function CrashGraph({ crashPoint, resultKey }: { crashPoint: number; resultKey: 
 // Grey = a loss or a small win (<=1.5x), yellow = a solid win, red = a rare jackpot.
 // Only 3 distinct values / 2 distinct sizes — see the comment in registry.ts's wheel entry for
 // why (a wheel with many odd-sized wedges reads as clutter, not a wheel).
+// All 12 wedges equal size now — see the comment in registry.ts's wheel entry for why the
+// jackpot is a modest 7.52x rather than something flashier: that's the real ceiling a single
+// 1-in-12 segment can pay without the other 11 segments' odds becoming fake.
 const WHEEL_SEGMENTS = [
-  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
-  { label: "2x", color: "#f59e0b", mult: 2, weight: 87 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
-  { label: "2x", color: "#f59e0b", mult: 2, weight: 87 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
-  { label: "2x", color: "#f59e0b", mult: 2, weight: 87 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
-  { label: "10.19x", color: "#dc2626", mult: 10.19, weight: 43 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "2x", color: "#f59e0b", mult: 2 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "2x", color: "#f59e0b", mult: 2 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "7.52x", color: "#dc2626", mult: 7.52 },
 ];
 const ROULETTE_RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 // Real European single-zero wheel order (not sequential 0–36) — using plain 0..36 order made
