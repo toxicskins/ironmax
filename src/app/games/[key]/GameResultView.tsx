@@ -157,7 +157,7 @@ function Coin({ side, resultKey }: { side: string; resultKey: string }) {
         transition={{ duration: 1.1, ease: "easeOut" }}
       >
         <div className="absolute inset-0 rounded-full" style={{ backfaceVisibility: "hidden" }}>
-          <IconEagle className="w-full h-full" />
+          <IconEagle className="w-full h-full" crisp />
         </div>
         <div className="absolute inset-0 rounded-full" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
           <IconLaurelStar className="w-full h-full" />

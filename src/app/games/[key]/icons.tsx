@@ -282,7 +282,7 @@ const COIN_RIM_TICKS = Array.from({ length: 40 }, (_, i) => (i / 40) * Math.PI *
 /** Coin Flip's "heads" face — a real spread-wing eagle emblem (user-supplied artwork), engraved
  * onto the coin — instead of hand-drawn shapes. A plain HTML <img> (not a nested SVG <image>,
  * which renders unreliably when pointed at an external .svg) laid over the coin badge. */
-export function IconEagle({ className }: IconProps) {
+export function IconEagle({ className, crisp }: IconProps & { crisp?: boolean }) {
   return (
     <div className={`relative ${className ?? ""}`}>
       <svg viewBox="0 0 48 48" className="w-full h-full" fill="none">
@@ -303,17 +303,23 @@ export function IconEagle({ className }: IconProps) {
             <stop offset="0" stopColor="#fde68a" />
             <stop offset="1" stopColor="#b45309" />
           </linearGradient>
-          {/* The source artwork is fine line art — at the ~24-96px this icon is usually shown
-              at, those thin strokes anti-alias down to near-zero opacity and the eagle all but
-              disappears. Dilating the rendered raster bulks the lines back up to something
-              visible without needing a second, simplified asset. */}
+          {/* The source artwork is fine line art. At icon size (~24-96px, e.g. the idle preview
+              and the heads/tails picker) those thin strokes anti-alias down to near-zero opacity
+              and the eagle all but disappears, so a mild dilate bulks them back up. At the large
+              flip-result size (~176-224px) the linework is already crisp and visible on its own —
+              the same dilate there just melts the fine detail into a blurry blob, so `crisp`
+              skips it entirely instead of tuning one radius to try to fit both. */}
           <filter id="eagle-dilate" x="-30%" y="-30%" width="160%" height="160%">
-            <feMorphology operator="dilate" radius="3" />
+            <feMorphology operator="dilate" radius="1.4" />
           </filter>
         </defs>
       </svg>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/icons/coin-eagle.svg" alt="" className="absolute left-[6%] top-[23%] w-[88%]" style={{ filter: "url(#eagle-dilate)" }} />
+      <img
+        src="/icons/coin-eagle.svg" alt=""
+        className="absolute left-[6%] top-[23%] w-[88%]"
+        style={crisp ? undefined : { filter: "url(#eagle-dilate)" }}
+      />
     </div>
   );
 }
