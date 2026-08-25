@@ -279,52 +279,42 @@ export function IconCoinFace({ className, label }: IconProps & { label: string }
 
 const COIN_RIM_TICKS = Array.from({ length: 40 }, (_, i) => (i / 40) * Math.PI * 2);
 
-/** Coin Flip's "heads" face — an engraved eagle-head bust in profile, like a real coin obverse
- * (reeded rim, layered shading, feather strokes) — instead of the literal word HEADS or a flat
- * cartoon silhouette. */
+/** Coin Flip's "heads" face — a real spread-wing eagle emblem (user-supplied artwork), engraved
+ * onto the coin — instead of hand-drawn shapes. A plain HTML <img> (not a nested SVG <image>,
+ * which renders unreliably when pointed at an external .svg) laid over the coin badge. */
 export function IconEagle({ className }: IconProps) {
   return (
-    <svg viewBox="0 0 48 48" className={className} fill="none">
-      <circle cx="24" cy="24" r="22" fill="url(#eagle-grad)" />
-      <circle cx="24" cy="24" r="22" stroke="#5c2e0a" strokeWidth="1.5" />
-      {/* reeded edge, like a real minted coin */}
-      {COIN_RIM_TICKS.map((a, i) => (
-        <line
-          key={i}
-          x1={24 + 21.5 * Math.cos(a)} y1={24 + 21.5 * Math.sin(a)}
-          x2={24 + 19.5 * Math.cos(a)} y2={24 + 19.5 * Math.sin(a)}
-          stroke="rgba(92,46,10,0.35)" strokeWidth="0.6"
-        />
-      ))}
-      <circle cx="24" cy="24" r="18.5" fill="none" stroke="rgba(92,46,10,0.4)" strokeWidth="0.75" />
-      <defs>
-        <linearGradient id="eagle-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#fde68a" />
-          <stop offset="1" stopColor="#b45309" />
-        </linearGradient>
-      </defs>
-      {/* eagle-head bust, profile facing left, layered for an engraved/embossed look */}
-      <g transform="translate(24,25)">
-        <path
-          d="M-11,15 C-11,4 -6,-5 3,-8 C9,-10 14,-7 15.5,-2.5 C16,1 13,2.5 9.5,1.5 C7,0.7 5,2.5 5,5.5 C5,9.5 9,10.5 9,15 Z"
-          fill="#78350f"
-        />
-        {/* crown highlight */}
-        <path d="M3,-8 C9,-10 14,-7 15.5,-2.5 C15.5,0.5 13,1.5 10,0.8 L6,-4 Z" fill="#a16207" opacity="0.75" />
-        {/* beak */}
-        <path d="M14.5,-3 L21,-1.2 L14.5,0.8 L16,-1.1 Z" fill="#fde68a" />
-        <path d="M14.5,-3 L21,-1.2 L14.5,0.8 L16,-1.1 Z" fill="none" stroke="#78350f" strokeWidth="0.5" />
-        {/* eye */}
-        <circle cx="11" cy="-3.2" r="1.15" fill="#1c1917" />
-        <circle cx="11.35" cy="-3.5" r="0.35" fill="#fde68a" />
-        {/* brow ridge */}
-        <path d="M6.5,-5.5 C9,-6.5 11.5,-6 13,-4.5" stroke="#5c2e0a" strokeWidth="0.7" fill="none" strokeLinecap="round" />
-        {/* feather texture strokes along the neck */}
-        {[[-8.5, 11, -2, 6], [-7, 13.5, -1, 8.5], [-4.5, 15, 1, 10.5], [-1.5, 15.3, 3.5, 11.5]].map(([x1, y1, x2, y2], i) => (
-          <path key={i} d={`M${x1},${y1} C${(x1 + x2) / 2},${(y1 + y2) / 2 - 1} ${x2},${y2 - 1} ${x2},${y2}`} stroke="#5c2e0a" strokeWidth="0.6" fill="none" strokeLinecap="round" opacity="0.7" />
+    <div className={`relative ${className ?? ""}`}>
+      <svg viewBox="0 0 48 48" className="w-full h-full" fill="none">
+        <circle cx="24" cy="24" r="22" fill="url(#eagle-grad)" />
+        <circle cx="24" cy="24" r="22" stroke="#5c2e0a" strokeWidth="1.5" />
+        {/* reeded edge, like a real minted coin */}
+        {COIN_RIM_TICKS.map((a, i) => (
+          <line
+            key={i}
+            x1={24 + 21.5 * Math.cos(a)} y1={24 + 21.5 * Math.sin(a)}
+            x2={24 + 19.5 * Math.cos(a)} y2={24 + 19.5 * Math.sin(a)}
+            stroke="rgba(92,46,10,0.35)" strokeWidth="0.6"
+          />
         ))}
-      </g>
-    </svg>
+        <circle cx="24" cy="24" r="18.5" fill="none" stroke="rgba(92,46,10,0.4)" strokeWidth="0.75" />
+        <defs>
+          <linearGradient id="eagle-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#fde68a" />
+            <stop offset="1" stopColor="#b45309" />
+          </linearGradient>
+          {/* The source artwork is fine line art — at the ~24-96px this icon is usually shown
+              at, those thin strokes anti-alias down to near-zero opacity and the eagle all but
+              disappears. Dilating the rendered raster bulks the lines back up to something
+              visible without needing a second, simplified asset. */}
+          <filter id="eagle-dilate" x="-30%" y="-30%" width="160%" height="160%">
+            <feMorphology operator="dilate" radius="3" />
+          </filter>
+        </defs>
+      </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/icons/coin-eagle.svg" alt="" className="absolute left-[6%] top-[23%] w-[88%]" style={{ filter: "url(#eagle-dilate)" }} />
+    </div>
   );
 }
 
