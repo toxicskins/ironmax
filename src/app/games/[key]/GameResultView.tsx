@@ -5,6 +5,7 @@ import * as deck from "@letele/playing-cards";
 import {
   IconSeven, IconBar, IconBell, IconCherry, IconLemon, IconGrape,
   IconWatermelon, IconOrange, IconPlum, IconStar, IconMine, IconGem, IconCoinFace,
+  IconEagle, IconLaurelStar,
 } from "./icons";
 
 const SYMBOL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -155,11 +156,11 @@ function Coin({ side, resultKey }: { side: string; resultKey: string }) {
         animate={{ rotateY: spins * 360 }}
         transition={{ duration: 1.1, ease: "easeOut" }}
       >
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 border-[6px] border-amber-200 flex items-center justify-center text-3xl sm:text-4xl font-extrabold text-zinc-950" style={{ backfaceVisibility: "hidden" }}>
-          HEADS
+        <div className="absolute inset-0 rounded-full" style={{ backfaceVisibility: "hidden" }}>
+          <IconEagle className="w-full h-full" />
         </div>
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-500 border-[6px] border-zinc-100 flex items-center justify-center text-3xl sm:text-4xl font-extrabold text-zinc-950" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-          TAILS
+        <div className="absolute inset-0 rounded-full" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
+          <IconLaurelStar className="w-full h-full" />
         </div>
       </motion.div>
     </div>
@@ -754,11 +755,7 @@ export function IdlePreview({ category, gameKey }: { category: string; gameKey: 
   }
   if (category === "wheel") {
     if (gameKey === "coinflip") {
-      return (
-        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 border-4 border-amber-200 flex items-center justify-center text-sm font-extrabold text-zinc-950 drop-shadow-[0_0_20px_-4px_rgba(245,158,11,0.6)]">
-          HEADS
-        </div>
-      );
+      return <IconEagle className="w-24 h-24 drop-shadow-[0_0_20px_-4px_rgba(245,158,11,0.6)]" />;
     }
     const isRoulette = gameKey === "roulette";
     const colors = isRoulette

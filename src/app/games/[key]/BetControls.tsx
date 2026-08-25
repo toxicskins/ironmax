@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { IconEagle, IconLaurelStar } from "./icons";
 
 export type BetParams = Record<string, unknown>;
 
@@ -93,8 +94,8 @@ function CoinflipControls({ onChange }: { onChange: (p: BetParams) => void }) {
     <Row label="Call it">
       {(["heads", "tails"] as const).map((v) => (
         <button key={v} onClick={() => pick(v)}
-          className={`px-4 py-1.5 rounded-md text-sm font-semibold capitalize flex items-center gap-1.5 ${call === v ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
-          <span aria-hidden>{v === "heads" ? "🪙" : "⚪"}</span>
+          className={`px-3 py-1 rounded-md text-sm font-semibold capitalize flex items-center gap-1.5 ${call === v ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
+          {v === "heads" ? <IconEagle className="w-5 h-5" /> : <IconLaurelStar className="w-5 h-5" />}
           {v}
         </button>
       ))}

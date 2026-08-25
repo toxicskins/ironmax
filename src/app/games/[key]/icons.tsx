@@ -276,3 +276,57 @@ export function IconCoinFace({ className, label }: IconProps & { label: string }
     </svg>
   );
 }
+
+/** Coin Flip's "heads" face — a spread-winged eagle, like a real coin obverse — instead of the
+ * literal word HEADS. */
+export function IconEagle({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} fill="none">
+      <circle cx="24" cy="24" r="22" fill="url(#eagle-grad)" />
+      <circle cx="24" cy="24" r="22" stroke="#78350f" strokeWidth="1.5" />
+      <circle cx="24" cy="24" r="18" fill="none" stroke="rgba(120,53,15,0.35)" strokeWidth="1" strokeDasharray="2 2" />
+      <defs>
+        <linearGradient id="eagle-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fde68a" />
+          <stop offset="1" stopColor="#d97706" />
+        </linearGradient>
+      </defs>
+      {/* wings */}
+      <path d="M23 20c-8-9-16-6-19-1 7 0 13 2 19 7z" fill="#78350f" />
+      <path d="M25 20c8-9 16-6 19-1-7 0-13 2-19 7z" fill="#78350f" />
+      {/* head + beak */}
+      <circle cx="24" cy="15" r="4" fill="#78350f" />
+      <path d="M24 14l5 1.4-5 2z" fill="#78350f" />
+      {/* body/tail */}
+      <path d="M19 25h10l-2 12h-6z" fill="#78350f" />
+    </svg>
+  );
+}
+
+/** Coin Flip's "tails" face — a laurel-wreathed star, like a real coin reverse. */
+export function IconLaurelStar({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} fill="none">
+      <circle cx="24" cy="24" r="22" fill="url(#tails-grad)" />
+      <circle cx="24" cy="24" r="22" stroke="#3f3f46" strokeWidth="1.5" />
+      <circle cx="24" cy="24" r="18" fill="none" stroke="rgba(63,63,70,0.4)" strokeWidth="1" strokeDasharray="2 2" />
+      <defs>
+        <linearGradient id="tails-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#e4e4e7" />
+          <stop offset="1" stopColor="#a1a1aa" />
+        </linearGradient>
+      </defs>
+      {/* laurel branches */}
+      <path d="M15 14c-5 5-6 14-2 21" stroke="#52525b" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M33 14c5 5 6 14 2 21" stroke="#52525b" strokeWidth="2" fill="none" strokeLinecap="round" />
+      {[0, 1, 2, 3].map((i) => (
+        <ellipse key={`l-${i}`} cx={15 - i * 0.8} cy={19 + i * 4.5} rx="3" ry="1.6" fill="#52525b" transform={`rotate(${-40 + i * 10} ${15 - i * 0.8} ${19 + i * 4.5})`} />
+      ))}
+      {[0, 1, 2, 3].map((i) => (
+        <ellipse key={`r-${i}`} cx={33 + i * 0.8} cy={19 + i * 4.5} rx="3" ry="1.6" fill="#52525b" transform={`rotate(${40 - i * 10} ${33 + i * 0.8} ${19 + i * 4.5})`} />
+      ))}
+      {/* star */}
+      <path d="M24 15l2.5 6.5H33l-5.3 4 2 6.5-5.7-4-5.7 4 2-6.5-5.3-4h6.5z" fill="#52525b" />
+    </svg>
+  );
+}
