@@ -3,6 +3,7 @@ import { getGame } from "@/lib/games/registry";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { GamePlayer } from "./GamePlayer";
+import { MinesInteractive } from "./MinesInteractive";
 import { FloatingOrbs } from "../../FloatingOrbs";
 
 export default async function GamePage({ params }: { params: Promise<{ key: string }> }) {
@@ -28,13 +29,21 @@ export default async function GamePage({ params }: { params: Promise<{ key: stri
         </div>
         <p className="text-sm text-zinc-400 max-w-2xl">{game.description}</p>
       </div>
-      <GamePlayer
-        gameKey={game.key}
-        category={game.category}
-        minStake={game.minStake}
-        maxStake={game.maxStake}
-        initialCoins={wallet?.coins ?? null}
-      />
+      {game.key === "mines" ? (
+        <MinesInteractive
+          minStake={game.minStake}
+          maxStake={game.maxStake}
+          initialCoins={wallet?.coins ?? null}
+        />
+      ) : (
+        <GamePlayer
+          gameKey={game.key}
+          category={game.category}
+          minStake={game.minStake}
+          maxStake={game.maxStake}
+          initialCoins={wallet?.coins ?? null}
+        />
+      )}
       <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 max-w-2xl">
         <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-2">How this game pays</h2>
         <ul className="flex flex-col gap-1.5 text-sm text-zinc-300 list-disc pl-5">

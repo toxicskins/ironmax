@@ -7,7 +7,7 @@ import type { GameDef, GameResult } from "./types";
 // rather than a rigged one. Where a formula makes RTP independent of bet params (rollUnder,
 // crash), the constant bakes the split in directly; everywhere else, multiplier tables are
 // scaled to hit ~96%.
-const RTP_TARGET = 0.96;
+export const RTP_TARGET = 0.96;
 
 // dice/limbo share rollUnder(), which divides by targetBp — 0 breaks the formula (division by
 // zero) and anything above ~9500 gives the player a near-certain win. Clamped here and enforced
@@ -205,13 +205,18 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "mines", name: "Mines", category: "board", minStake: 1, maxStake: 500,
-    description: "Pick how many mines and how many tiles to reveal. All picked tiles must be safe to win — more picks or mines means a bigger multiplier but higher risk.",
+    description: "Choose how many mines are hidden, then click tiles yourself one at a time. Cash out whenever you want — the longer you push your luck, the bigger the multiplier.",
     rules: [
-      "Pick how many mines are hidden (1–24) and how many tiles you'll reveal",
-      "Every revealed tile must be safe — hit a single mine and you lose your stake",
-      "All picks safe: payout = (1 ÷ safe-tile odds)^picks × 0.96",
-      "More mines or more picks raises the multiplier and the risk together",
+      "Pick how many mines are hidden (1–24), then click any tile on the 5×5 board to reveal it",
+      "Every safe tile you reveal raises your multiplier — cash out any time after your first pick",
+      "Hit a mine and you lose your stake, whatever you'd built up",
+      "Multiplier per safe pick = (1 ÷ safe-tile odds)^picks × 0.96",
     ],
+    // This entry's `play` is unused for actual bets now — Mines is interactive (pick tiles one
+    // at a time, cash out whenever) via /api/games/mines/{start,pick,cashout}, which need the
+    // mine layout to persist server-side between requests instead of resolving in one shot like
+    // every other game here. Kept for the min/max stake + rules text the game page reads, and
+    // as the reference formula the API routes reimplement.
     play: (next, params) => {
       const mineCount = Math.min(24, Math.max(1, Number(params?.mineCount ?? 5)));
       const picks = Math.min(25 - mineCount, Math.max(1, Number(params?.picks ?? 1)));

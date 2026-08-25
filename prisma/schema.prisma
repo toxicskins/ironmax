@@ -40,6 +40,7 @@ model User {
   bets         Bet[]
   invoices     Invoice[]
   resetTokens  PasswordResetToken[]
+  minesRounds  MinesRound[]
 }
 
 model Wallet {
@@ -130,4 +131,23 @@ model Bet {
   nonce        BigInt
   resultJson   String
   createdAt    DateTime @default(now())
+}
+
+// A live, multi-step Mines round: the mine layout is generated once at start and kept
+// server-side (never sent to the client) so a player can pick tiles one at a time and cash out
+// whenever they choose, without being able to read ahead. Every other game resolves instantly
+// in one request; Mines is the one that needs state to live between requests.
+model MinesRound {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  stake      Int
+  mineCount  Int
+  grid       String // JSON bool[25], true = mine — never sent to the client while active
+  revealed   String   @default("[]") // JSON number[] of safely-revealed tile indices, in order
+  status     String   @default("active") // active | cashed | busted
+  serverSeed String
+  clientSeed String
+  nonce      BigInt
+  createdAt  DateTime @default(now())
 }
