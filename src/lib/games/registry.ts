@@ -151,24 +151,25 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "wheel", name: "Fortune Wheel", category: "wheel", minStake: 1, maxStake: 500,
-    description: "Spin the wheel. 12 equal segments — grey losses, yellow wins, one red jackpot.",
+    description: "Spin the wheel. 12 equal segments — half win, half lose.",
     rules: [
-      "Grey segments (0x): lose your stake — 9 of the 12 segments",
-      "Yellow segments (2x): a solid win — 2 of the 12 segments",
-      "Red segment (7.52x): the one jackpot",
-      "All 12 segments are the same size — at fully equal 1-in-12 odds, 7.52x is the biggest a single jackpot can pay without breaking the 96% RTP",
+      "Grey segments (0x): lose your stake — 6 of the 12 segments",
+      "Yellow segments (1.2x): a small win — 5 of the 12 segments",
+      "Red segment (5.52x): the one jackpot",
+      "All 12 segments are the same size — a 50% win chance, at the cost of the small-win payout staying modest so the jackpot and the 96% RTP both stay real",
     ],
-    // All 12 segments equal size on purpose (no more mixed-size wedges). The tradeoff of equal
-    // odds: a single 1-in-12 jackpot can't pay much more than this and still hit 96% RTP overall
-    // — push it higher and either the jackpot or the grey/yellow split stops being real odds.
-    // WHEEL_SEGMENTS in GameResultView.tsx must mirror this list exactly (value + order).
+    // All 12 segments equal size (no mixed-size wedges). Six winning segments (half the wheel)
+    // is only affordable at 96% RTP because five of those six wins are a modest 1.2x — bump the
+    // win count without lowering the small-win payout and either the jackpot or the odds
+    // elsewhere stop being real. WHEEL_SEGMENTS in GameResultView.tsx must mirror this list
+    // exactly (value + order).
     play: (next) => {
       const mult = weightedPick(next, [
-        { weight: 1, value: 0 }, { weight: 1, value: 0 }, { weight: 1, value: 2 },
-        { weight: 1, value: 0 }, { weight: 1, value: 0 }, { weight: 1, value: 2 },
-        { weight: 1, value: 0 }, { weight: 1, value: 0 }, { weight: 1, value: 0 },
-        { weight: 1, value: 0 }, { weight: 1, value: 0 },
-        { weight: 1, value: 7.52 },
+        { weight: 1, value: 0 }, { weight: 1, value: 0 }, { weight: 1, value: 1.2 },
+        { weight: 1, value: 0 }, { weight: 1, value: 1.2 }, { weight: 1, value: 1.2 },
+        { weight: 1, value: 0 }, { weight: 1, value: 0 }, { weight: 1, value: 1.2 },
+        { weight: 1, value: 0 }, { weight: 1, value: 1.2 },
+        { weight: 1, value: 5.52 },
       ]);
       return { multiplier: mult, detail: { segment: mult } };
     },

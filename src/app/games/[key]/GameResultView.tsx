@@ -564,16 +564,16 @@ function CrashGraph({ crashPoint, resultKey }: { crashPoint: number; resultKey: 
 const WHEEL_SEGMENTS = [
   { label: "0x", color: "#71717a", mult: 0 },
   { label: "0x", color: "#71717a", mult: 0 },
-  { label: "2x", color: "#f59e0b", mult: 2 },
+  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
+  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
   { label: "0x", color: "#71717a", mult: 0 },
   { label: "0x", color: "#71717a", mult: 0 },
-  { label: "2x", color: "#f59e0b", mult: 2 },
+  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
   { label: "0x", color: "#71717a", mult: 0 },
-  { label: "0x", color: "#71717a", mult: 0 },
-  { label: "0x", color: "#71717a", mult: 0 },
-  { label: "0x", color: "#71717a", mult: 0 },
-  { label: "0x", color: "#71717a", mult: 0 },
-  { label: "7.52x", color: "#dc2626", mult: 7.52 },
+  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
+  { label: "5.52x", color: "#dc2626", mult: 5.52 },
 ];
 const ROULETTE_RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 // Real European single-zero wheel order (not sequential 0–36) — using plain 0..36 order made
