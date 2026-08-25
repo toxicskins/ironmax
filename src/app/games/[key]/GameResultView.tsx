@@ -112,7 +112,10 @@ function SpinWheel({ segments, targetIndex, resultKey, size = 300 }: {
   const gradient = segments.map((s, i) => `${s.color} ${starts[i]}deg ${starts[i] + angleOf(i)}deg`).join(", ");
   const targetMid = starts[targetIndex] + angleOf(targetIndex) / 2;
   const targetAngle = 8 * 360 - targetMid;
-  const showLabels = n <= 8;
+  // A label only fits on a wedge wide enough to hold it — on a 12-segment wheel the two thin
+  // jackpot slivers (a couple of degrees each) would just overlap illegible text, so those skip
+  // the label rather than every segment being all-or-nothing gated by segment count.
+  const minLabelAngle = 16;
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -120,13 +123,23 @@ function SpinWheel({ segments, targetIndex, resultKey, size = 300 }: {
         <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 w-0 h-0 border-l-[14px] border-r-[14px] border-t-[24px] border-l-transparent border-r-transparent border-t-amber-400" />
         <motion.div
           key={resultKey}
-          className="w-full h-full rounded-full border-[6px] border-zinc-700 relative"
+          className="w-full h-full rounded-full border-[6px] border-zinc-700 relative overflow-hidden"
           style={{ backgroundImage: `conic-gradient(${gradient})` }}
           initial={{ rotate: 0 }}
           animate={{ rotate: targetAngle }}
           transition={{ duration: 4, ease: [0.14, 0.9, 0.2, 1] }}
         >
-          {showLabels && segments.map((s, i) => (
+          {/* boundary lines — without these, same-colored neighboring segments (e.g. the grey
+              loss/small-win tier) visually merge into one blob and the wheel reads as having
+              far fewer segments than it actually has */}
+          {n > 1 && starts.map((deg, i) => (
+            <div
+              key={`b-${i}`}
+              className="absolute left-1/2 top-1/2 origin-top w-px h-1/2 bg-black/30"
+              style={{ transform: `translateX(-50%) rotate(${deg}deg)` }}
+            />
+          ))}
+          {segments.map((s, i) => angleOf(i) >= minLabelAngle && (
             <div
               key={i}
               className="absolute inset-0 flex justify-center"
