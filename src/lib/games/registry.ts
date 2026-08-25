@@ -151,24 +151,28 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "wheel", name: "Fortune Wheel", category: "wheel", minStake: 1, maxStake: 500,
-    description: "Spin the wheel. 12 unequal-sized segments — grey losses and small wins, yellow bigger wins, red rare jackpots.",
+    description: "Spin the wheel. 12 segments — grey losses and small wins, yellow solid wins, red rare jackpots.",
     rules: [
       "Grey segments (0x, or 1x-1.5x): lose your stake, or a small win",
-      "Yellow segments (2x-8x): a solid win",
-      "Red segments (12x, 36.5x): rare jackpots",
-      "Segment size on the wheel reflects its real odds — the red jackpots are thin slivers on purpose",
+      "Yellow segments (2x-3x): a solid win",
+      "Red segments (8x, 10.65x): rare jackpots",
+      "Segment size on the wheel roughly reflects its real odds",
     ],
-    // Segments are unequal-sized wedges (weight = share of the wheel, matching real odds), not
-    // 12 equal slices — that's the only way to have a genuine rare jackpot (12x/36.5x) without
-    // it eating the whole RTP budget: at equal 1-in-12 odds a 12x segment alone would already
-    // account for the entire 96% target. WHEEL_SEGMENTS in GameResultView.tsx must mirror this
-    // list exactly (value + weight) so the drawn wedge sizes match these real odds.
+    // Segments are unequal-sized wedges (weight = share of the wheel), not 12 equal slices —
+    // that's the only way to fit a genuine rare jackpot without it eating the whole RTP budget.
+    // Kept every segment's weight >=20 (a visible wedge, no razor-thin slivers) and interleaved
+    // the tiers around the list instead of grouping all-grey-then-all-color, so same-colored
+    // segments don't visually fuse into one giant blob when laid out around the wheel.
+    // WHEEL_SEGMENTS in GameResultView.tsx must mirror this list exactly (value + weight + order)
+    // so the drawn wedges match these real odds.
     play: (next) => {
       const mult = weightedPick(next, [
-        { weight: 320, value: 0 }, { weight: 150, value: 0 },
-        { weight: 180, value: 1 }, { weight: 110, value: 1.2 }, { weight: 90, value: 1.5 },
-        { weight: 70, value: 2 }, { weight: 40, value: 2.5 }, { weight: 20, value: 3.5 }, { weight: 10, value: 5 }, { weight: 4, value: 8 },
-        { weight: 4, value: 12 }, { weight: 2, value: 36.5 },
+        { weight: 160, value: 0 }, { weight: 45, value: 2 },
+        { weight: 160, value: 0 }, { weight: 45, value: 3 },
+        { weight: 160, value: 0 }, { weight: 25, value: 8 },
+        { weight: 100, value: 1 }, { weight: 45, value: 2 },
+        { weight: 60, value: 1.2 }, { weight: 20, value: 10.65 },
+        { weight: 40, value: 1.5 }, { weight: 140, value: 0 },
       ]);
       return { multiplier: mult, detail: { segment: mult } };
     },

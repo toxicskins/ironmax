@@ -115,7 +115,7 @@ function SpinWheel({ segments, targetIndex, resultKey, size = 300 }: {
   // A label only fits on a wedge wide enough to hold it — on a 12-segment wheel the two thin
   // jackpot slivers (a couple of degrees each) would just overlap illegible text, so those skip
   // the label rather than every segment being all-or-nothing gated by segment count.
-  const minLabelAngle = 16;
+  const minLabelAngle = 14;
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -557,18 +557,18 @@ function CrashGraph({ crashPoint, resultKey }: { crashPoint: number; resultKey: 
 // weight — so the wedge each color/size represents on screen matches the real server odds.
 // Grey = a loss or a small win (<=1.5x), yellow = a solid win, red = a rare jackpot.
 const WHEEL_SEGMENTS = [
-  { label: "0x", color: "#71717a", mult: 0, weight: 320 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 150 },
-  { label: "1x", color: "#71717a", mult: 1, weight: 180 },
-  { label: "1.2x", color: "#71717a", mult: 1.2, weight: 110 },
-  { label: "1.5x", color: "#71717a", mult: 1.5, weight: 90 },
-  { label: "2x", color: "#f59e0b", mult: 2, weight: 70 },
-  { label: "2.5x", color: "#f59e0b", mult: 2.5, weight: 40 },
-  { label: "3.5x", color: "#f59e0b", mult: 3.5, weight: 20 },
-  { label: "5x", color: "#f59e0b", mult: 5, weight: 10 },
-  { label: "8x", color: "#f59e0b", mult: 8, weight: 4 },
-  { label: "12x", color: "#dc2626", mult: 12, weight: 4 },
-  { label: "36.5x", color: "#dc2626", mult: 36.5, weight: 2 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 160 },
+  { label: "2x", color: "#f59e0b", mult: 2, weight: 45 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 160 },
+  { label: "3x", color: "#f59e0b", mult: 3, weight: 45 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 160 },
+  { label: "8x", color: "#dc2626", mult: 8, weight: 25 },
+  { label: "1x", color: "#71717a", mult: 1, weight: 100 },
+  { label: "2x", color: "#f59e0b", mult: 2, weight: 45 },
+  { label: "1.2x", color: "#71717a", mult: 1.2, weight: 60 },
+  { label: "10.65x", color: "#dc2626", mult: 10.65, weight: 20 },
+  { label: "1.5x", color: "#71717a", mult: 1.5, weight: 40 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 140 },
 ];
 const ROULETTE_RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 // Real European single-zero wheel order (not sequential 0–36) — using plain 0..36 order made
