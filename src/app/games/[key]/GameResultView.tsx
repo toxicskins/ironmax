@@ -556,19 +556,21 @@ function CrashGraph({ crashPoint, resultKey }: { crashPoint: number; resultKey: 
 // Mirrors the weighted segment list in src/lib/games/registry.ts (wheel) exactly — value AND
 // weight — so the wedge each color/size represents on screen matches the real server odds.
 // Grey = a loss or a small win (<=1.5x), yellow = a solid win, red = a rare jackpot.
+// Only 3 distinct values / 2 distinct sizes — see the comment in registry.ts's wheel entry for
+// why (a wheel with many odd-sized wedges reads as clutter, not a wheel).
 const WHEEL_SEGMENTS = [
-  { label: "0x", color: "#71717a", mult: 0, weight: 160 },
-  { label: "2x", color: "#f59e0b", mult: 2, weight: 45 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 160 },
-  { label: "3x", color: "#f59e0b", mult: 3, weight: 45 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 160 },
-  { label: "8x", color: "#dc2626", mult: 8, weight: 25 },
-  { label: "1x", color: "#71717a", mult: 1, weight: 100 },
-  { label: "2x", color: "#f59e0b", mult: 2, weight: 45 },
-  { label: "1.2x", color: "#71717a", mult: 1.2, weight: 60 },
-  { label: "10.65x", color: "#dc2626", mult: 10.65, weight: 20 },
-  { label: "1.5x", color: "#71717a", mult: 1.5, weight: 40 },
-  { label: "0x", color: "#71717a", mult: 0, weight: 140 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
+  { label: "2x", color: "#f59e0b", mult: 2, weight: 87 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
+  { label: "2x", color: "#f59e0b", mult: 2, weight: 87 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
+  { label: "2x", color: "#f59e0b", mult: 2, weight: 87 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 87 },
+  { label: "10.19x", color: "#dc2626", mult: 10.19, weight: 43 },
 ];
 const ROULETTE_RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 // Real European single-zero wheel order (not sequential 0–36) — using plain 0..36 order made

@@ -151,28 +151,26 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "wheel", name: "Fortune Wheel", category: "wheel", minStake: 1, maxStake: 500,
-    description: "Spin the wheel. 12 segments — grey losses and small wins, yellow solid wins, red rare jackpots.",
+    description: "Spin the wheel. 12 segments — grey losses, yellow wins, one red jackpot.",
     rules: [
-      "Grey segments (0x, or 1x-1.5x): lose your stake, or a small win",
-      "Yellow segments (2x-3x): a solid win",
-      "Red segments (8x, 10.65x): rare jackpots",
-      "Segment size on the wheel roughly reflects its real odds",
+      "Grey segments (0x): lose your stake — 8 of the 12 segments",
+      "Yellow segments (2x): a solid win — 3 of the 12 segments",
+      "Red segment (~10.2x): the one rare jackpot",
+      "The jackpot segment is a visibly smaller wedge than the rest — that's its real (lower) odds",
     ],
-    // Segments are unequal-sized wedges (weight = share of the wheel), not 12 equal slices —
-    // that's the only way to fit a genuine rare jackpot without it eating the whole RTP budget.
-    // Kept every segment's weight >=20 (a visible wedge, no razor-thin slivers) and interleaved
-    // the tiers around the list instead of grouping all-grey-then-all-color, so same-colored
-    // segments don't visually fuse into one giant blob when laid out around the wheel.
-    // WHEEL_SEGMENTS in GameResultView.tsx must mirror this list exactly (value + weight + order)
-    // so the drawn wedges match these real odds.
+    // Only 3 distinct values and 2 distinct wedge sizes on purpose — a wheel mixing many
+    // differently-sized slices (this one used to have 6+ distinct sizes ranging 7deg-58deg)
+    // reads as chaotic clutter rather than a wheel. 11 same-size wedges (0x/2x) plus one
+    // visibly-smaller wedge for the single jackpot communicates "common vs. rare" cleanly
+    // without needing a mess of odd sizes. WHEEL_SEGMENTS in GameResultView.tsx must mirror
+    // this list exactly (value + weight + order) so the drawn wedges match these real odds.
     play: (next) => {
       const mult = weightedPick(next, [
-        { weight: 160, value: 0 }, { weight: 45, value: 2 },
-        { weight: 160, value: 0 }, { weight: 45, value: 3 },
-        { weight: 160, value: 0 }, { weight: 25, value: 8 },
-        { weight: 100, value: 1 }, { weight: 45, value: 2 },
-        { weight: 60, value: 1.2 }, { weight: 20, value: 10.65 },
-        { weight: 40, value: 1.5 }, { weight: 140, value: 0 },
+        { weight: 87, value: 0 }, { weight: 87, value: 0 }, { weight: 87, value: 2 },
+        { weight: 87, value: 0 }, { weight: 87, value: 0 }, { weight: 87, value: 2 },
+        { weight: 87, value: 0 }, { weight: 87, value: 0 }, { weight: 87, value: 2 },
+        { weight: 87, value: 0 }, { weight: 87, value: 0 },
+        { weight: 43, value: 10.19 },
       ]);
       return { multiplier: mult, detail: { segment: mult } };
     },
