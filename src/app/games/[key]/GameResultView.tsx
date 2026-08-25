@@ -176,6 +176,9 @@ function limboHeightFrac(mult: number) {
 
 const LIMBO_STARS = [12, 22, 34, 48, 58, 68, 78, 88, 18, 42, 62, 82, 30, 92, 5, 96, 40, 70];
 const LIMBO_FLIGHT_S = 1.4;
+// Ruler ticks along the sky's height so it reads as an altitude scale, not just empty space —
+// evenly spaced on the log scale itself (not evenly spaced in x) so they land at legible heights.
+const LIMBO_TICKS = [1, 1.5, 2, 3, 5, 10, 20, 50];
 
 /** A rocket climbs a starfield toward a dashed target line — cleared it (win) or sputtered out
  * below it (loss) — instead of a bare number appearing out of nowhere. */
@@ -215,6 +218,19 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
             transition={{ duration: 1.6 + (i % 5) * 0.3, repeat: Infinity, delay: (i % 7) * 0.2, ease: "easeInOut" }}
           />
         ))}
+
+        {/* altitude ruler — tick marks up both edges so the climb reads against a scale instead
+            of empty sky, since "how high" is meaningless without something to measure it by */}
+        {LIMBO_TICKS.map((m) => {
+          const bottom = `${6 + limboHeightFrac(m) * 82}%`;
+          return (
+            <div key={m} className="absolute left-0 right-0 flex items-center justify-between px-1.5 pointer-events-none" style={{ bottom }}>
+              <span className="text-[9px] text-zinc-500 tabular-nums">{m}x</span>
+              <div className="flex-1 border-t border-white/[0.06] mx-1.5" />
+              <span className="text-[9px] text-zinc-500 tabular-nums">{m}x</span>
+            </div>
+          );
+        })}
 
         {/* launch-pad glow, pulses once as the rocket lifts off */}
         <motion.div
