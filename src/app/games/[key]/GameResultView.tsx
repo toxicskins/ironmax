@@ -561,19 +561,21 @@ function CrashGraph({ crashPoint, resultKey }: { crashPoint: number; resultKey: 
 // All 12 wedges equal size now — see the comment in registry.ts's wheel entry for why the
 // jackpot is a modest 7.52x rather than something flashier: that's the real ceiling a single
 // 1-in-12 segment can pay without the other 11 segments' odds becoming fake.
+// Strict win/lose/win/lose order all the way around — see the comment in registry.ts's wheel
+// entry.
 const WHEEL_SEGMENTS = [
-  { label: "0x", color: "#71717a", mult: 0 },
-  { label: "0x", color: "#71717a", mult: 0 },
-  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
-  { label: "0x", color: "#71717a", mult: 0 },
-  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
-  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
-  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "1x", color: "#f59e0b", mult: 1 },
   { label: "0x", color: "#71717a", mult: 0 },
   { label: "1.2x", color: "#f59e0b", mult: 1.2 },
   { label: "0x", color: "#71717a", mult: 0 },
-  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
-  { label: "5.52x", color: "#dc2626", mult: 5.52 },
+  { label: "1.5x", color: "#f59e0b", mult: 1.5 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "1.8x", color: "#f59e0b", mult: 1.8 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "2x", color: "#f59e0b", mult: 2 },
+  { label: "0x", color: "#71717a", mult: 0 },
+  { label: "4.02x", color: "#dc2626", mult: 4.02 },
+  { label: "0x", color: "#71717a", mult: 0 },
 ];
 const ROULETTE_RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 // Real European single-zero wheel order (not sequential 0–36) — using plain 0..36 order made
