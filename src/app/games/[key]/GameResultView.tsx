@@ -180,8 +180,10 @@ const LIMBO_FLIGHT_S = 1.4;
 // evenly spaced on the log scale itself (not evenly spaced in x) so they land at legible heights.
 const LIMBO_TICKS = [1, 1.5, 2, 3, 5, 10, 20, 50];
 
-/** A rocket climbs a starfield toward a dashed target line — cleared it (win) or sputtered out
- * below it (loss) — instead of a bare number appearing out of nowhere. */
+/** A comet climbs a starfield toward a dashed target line — cleared it (win) or fizzled out
+ * below it (loss) — instead of a bare number appearing out of nowhere. A live readout riding
+ * next to it counts up in real time as it climbs, so "how high is it going" is answered by
+ * watching the flight, not just by reading the final number after the fact. */
 function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
   targetMult: number; rolledMult: number; cleared: boolean; resultKey: string;
 }) {
@@ -189,8 +191,8 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
   const rolledFrac = limboHeightFrac(rolledMult);
   const rocketBottom = `${6 + rolledFrac * 82}%`;
 
-  // The rocket icon only swaps to the explosion right at touchdown, not for the whole flight —
-  // otherwise a loss just shows a fading-in 💥 the entire climb instead of a rocket that fails.
+  // The comet only shatters right at touchdown, not for the whole flight — otherwise a loss
+  // just shows a fading-in burst the entire climb instead of something that fails at the end.
   const [exploded, setExploded] = useState(false);
   useEffect(() => {
     setExploded(false);
@@ -199,6 +201,26 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
       return () => clearTimeout(t);
     }
   }, [resultKey, cleared]);
+
+  // Live altitude readout: recompute the "multiplier so far" every frame from the same log-scale
+  // math the comet's height uses, driven by an eased progress clock — so the number on screen and
+  // the dot's position always agree, instead of the number only appearing once at the very end.
+  const [liveMult, setLiveMult] = useState(1);
+  useEffect(() => {
+    setLiveMult(1);
+    let raf = 0;
+    const start = performance.now();
+    const durationMs = LIMBO_FLIGHT_S * 1000;
+    function tick(now: number) {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setLiveMult(Math.pow(LIMBO_SKY_CEILING, rolledFrac * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultKey]);
 
   return (
     <div className="w-full max-w-md flex flex-col items-center gap-3">
@@ -262,32 +284,71 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
           transition={{ duration: LIMBO_FLIGHT_S, ease: [0.3, 0, 0.6, 1], times: [0, 0.85, 1] }}
         />
 
-        {/* the rocket itself, with a flickering flame riding along underneath it */}
+        {/* the comet — a glowing core with a tapered tail, not a stock emoji — plus a live
+            altitude readout riding right alongside it */}
         <motion.div
           key={resultKey}
           className="absolute left-1/2"
-          style={{ bottom: "2%", marginLeft: -16 }}
-          initial={{ bottom: "2%", opacity: 0, rotate: -8 }}
-          animate={{
-            bottom: rocketBottom,
-            opacity: 1,
-            rotate: cleared ? [-8, 6, -4, 0] : [-8, 10, -14, -35],
-          }}
+          style={{ bottom: "2%" }}
+          initial={{ bottom: "2%", opacity: 0 }}
+          animate={{ bottom: rocketBottom, opacity: 1 }}
           transition={{ duration: LIMBO_FLIGHT_S, ease: [0.22, 0.9, 0.3, 1] }}
         >
-          <div className="relative">
-            {!exploded && (
-              <motion.span
-                className="absolute left-1/2 -translate-x-1/2 top-full text-base"
-                animate={{ opacity: [1, 0.4, 1], scale: [1, 0.7, 1] }}
-                transition={{ duration: 0.25, repeat: Infinity, ease: "easeInOut" }}
-              >
-                🔥
-              </motion.span>
+          <div className="relative flex items-center justify-center" style={{ width: 0, height: 0 }}>
+            {!exploded ? (
+              <>
+                {/* tapered tail, trailing below the core in the direction of travel */}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 top-1"
+                  style={{
+                    width: 9, height: 44,
+                    clipPath: "polygon(50% 100%, 0% 0%, 100% 0%)",
+                    background: "linear-gradient(180deg, rgba(253,224,71,0.95), rgba(245,158,11,0.55) 55%, transparent)",
+                    filter: "blur(0.5px)",
+                  }}
+                />
+                {/* glowing core */}
+                <motion.div
+                  className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                  style={{
+                    width: 16, height: 16,
+                    background: "radial-gradient(circle at 35% 35%, #fff7d6, #fbbf24 45%, #d97706 100%)",
+                    boxShadow: "0 0 16px 4px rgba(251,191,36,0.85), 0 0 3px 1px #fff7d6",
+                  }}
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ duration: 0.35, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </>
+            ) : (
+              <>
+                {/* shatter burst — a dimming ember core plus debris flying outward, once */}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                  style={{ width: 16, height: 16, background: "radial-gradient(circle, #7f1d1d, #1c1917 70%)", boxShadow: "0 0 10px 2px rgba(220,38,38,0.5)" }}
+                />
+                {[0, 1, 2, 3, 4, 5].map((i) => {
+                  const angle = (i / 6) * Math.PI * 2;
+                  return (
+                    <motion.span
+                      key={i}
+                      className="absolute left-1/2 top-1/2 w-1 h-1 rounded-full bg-red-400"
+                      initial={{ x: 0, y: 0, opacity: 1 }}
+                      animate={{ x: Math.cos(angle) * 30, y: Math.sin(angle) * 30 - 10, opacity: 0 }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                    />
+                  );
+                })}
+              </>
             )}
-            <span className="block text-3xl drop-shadow-[0_0_14px_rgba(245,158,11,0.7)]">
-              {exploded ? "💥" : "🚀"}
-            </span>
+
+            {/* live altitude tag, riding beside the comet */}
+            {!exploded && (
+              <span
+                className="absolute left-full ml-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-sm font-bold tabular-nums text-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]"
+              >
+                {liveMult.toFixed(2)}x
+              </span>
+            )}
           </div>
         </motion.div>
       </motion.div>
@@ -296,7 +357,7 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
         key={`${resultKey}-readout`}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2, duration: 0.4 }}
+        transition={{ delay: LIMBO_FLIGHT_S - 0.2, duration: 0.4 }}
         className={`text-4xl font-extrabold tabular-nums ${cleared ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.6)]" : "text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.5)]"}`}
       >
         {rolledMult.toFixed(2)}x
