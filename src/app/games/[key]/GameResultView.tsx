@@ -139,20 +139,30 @@ function SpinWheel({ segments, targetIndex, resultKey, size = 300 }: {
               style={{ transform: `translateX(-50%) rotate(${deg}deg)` }}
             />
           ))}
-          {segments.map((s, i) => angleOf(i) >= minLabelAngle && (
-            <div
-              key={i}
-              className="absolute inset-0 flex justify-center"
-              style={{ transform: `rotate(${starts[i] + angleOf(i) / 2}deg)` }}
-            >
+          {segments.map((s, i) => {
+            if (angleOf(i) < minLabelAngle) return null;
+            const mid = starts[i] + angleOf(i) / 2;
+            // Position via trig so the label sits in its wedge and spins along with the disk
+            // (it has to, or it'd land on the wrong color once the wheel stops) — but counter-
+            // rotate the glyphs themselves by the wheel's own final resting angle, so at rest
+            // the text reads upright and horizontal no matter where its wedge ends up, instead
+            // of upside-down on the lower half or sideways near 3/9 o'clock.
+            const rad = ((mid - 90) * Math.PI) / 180;
+            const left = 50 + 34 * Math.cos(rad);
+            const top = 50 + 34 * Math.sin(rad);
+            return (
               <span
-                className="text-base sm:text-lg font-bold mt-4"
-                style={{ color: s.textColor ?? "#fff" }}
+                key={i}
+                className="absolute text-sm sm:text-base font-bold"
+                style={{
+                  left: `${left}%`, top: `${top}%`, color: s.textColor ?? "#fff",
+                  transform: `translate(-50%, -50%) rotate(${-targetAngle}deg)`,
+                }}
               >
                 {s.label}
               </span>
-            </div>
-          ))}
+            );
+          })}
         </motion.div>
         <div className="absolute inset-0 rounded-full flex items-center justify-center pointer-events-none">
           <div className="w-7 h-7 rounded-full bg-zinc-700 border-2 border-zinc-500 shadow-inner" />
