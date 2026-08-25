@@ -270,7 +270,7 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
           style={{ bottom: `${6 + targetFrac * 82}%` }}
         >
           <span className="absolute right-1.5 -top-4 text-[10px] font-semibold text-amber-400/80">
-            target {targetMult.toFixed(2)}x
+            min {targetMult.toFixed(2)}x to cash out
           </span>
         </div>
 
@@ -358,12 +358,17 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: LIMBO_FLIGHT_S - 0.2, duration: 0.4 }}
-        className={`text-4xl font-extrabold tabular-nums ${cleared ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.6)]" : "text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.5)]"}`}
+        className="flex flex-col items-center"
       >
-        {rolledMult.toFixed(2)}x
+        {/* The payout is always the target multiplier, never how high the roll actually climbed
+            — leading with the roll here made it look like that number was what got paid. */}
+        <span className={`text-4xl font-extrabold tabular-nums ${cleared ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.6)]" : "text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.5)]"}`}>
+          {cleared ? `paid ${targetMult.toFixed(2)}x` : "missed"}
+        </span>
+        <span className="text-xs text-zinc-500 mt-1">roll reached {rolledMult.toFixed(2)}x</span>
       </motion.div>
       <div className="w-full text-sm text-zinc-500 flex justify-between">
-        <span>target: <span className="text-zinc-300 font-semibold">{targetMult.toFixed(2)}x</span></span>
+        <span>your target (min to win): <span className="text-zinc-300 font-semibold">{targetMult.toFixed(2)}x</span></span>
         <span>{cleared ? "cleared" : "missed"}</span>
       </div>
     </div>
