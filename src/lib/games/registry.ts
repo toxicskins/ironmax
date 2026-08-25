@@ -154,23 +154,23 @@ export const GAMES: GameDef[] = [
     description: "Spin the wheel. 12 equal segments, alternating win/lose all the way around.",
     rules: [
       "Grey segments (0x): lose your stake — every other segment, 6 of 12",
-      "Yellow segments (1x-2x): a solid win, size varies by segment — 5 of 12",
-      "Red segment (4.02x): the one jackpot, also on a win slot",
+      "Yellow segments (1x-3x): a solid win, size varies by segment — 5 of 12",
+      "Red segment (10x): the one jackpot, also on a win slot",
       "Segments strictly alternate win/lose/win/lose around the wheel",
     ],
-    // Strict win-lose-win-lose order (not grouped by tier) so every other segment is a win no
-    // matter where the wheel stops. The 5 yellow wins now vary (1x/1.2x/1.5x/1.8x/2x instead of
-    // a flat 1.5x each) but still sum to the same 7.5 they did before, so the jackpot (4.02x)
-    // and the overall 96% RTP are unchanged — only the mix within the yellow tier moved.
-    // WHEEL_SEGMENTS in GameResultView.tsx must mirror this list exactly (value + order).
+    // NOTE — RTP is no longer ~96% here: at explicit user request, x3 and x10 were set on two
+    // of the equal 1-in-12 slots without rebalancing anything else. Just those two segments
+    // alone already average (3+10)/12 = 108% before the other four yellow wins are even
+    // counted — this wheel now pays out more than it takes in, by design, overriding the
+    // platform-wide RTP_TARGET convention every other game still follows.
     play: (next) => {
       const mult = weightedPick(next, [
         { weight: 1, value: 1 }, { weight: 1, value: 0 },
-        { weight: 1, value: 1.2 }, { weight: 1, value: 0 },
+        { weight: 1, value: 3 }, { weight: 1, value: 0 },
         { weight: 1, value: 1.5 }, { weight: 1, value: 0 },
         { weight: 1, value: 1.8 }, { weight: 1, value: 0 },
         { weight: 1, value: 2 }, { weight: 1, value: 0 },
-        { weight: 1, value: 4.02 }, { weight: 1, value: 0 },
+        { weight: 1, value: 10 }, { weight: 1, value: 0 },
       ]);
       return { multiplier: mult, detail: { segment: mult } };
     },

@@ -566,7 +566,7 @@ function CrashGraph({ crashPoint, resultKey }: { crashPoint: number; resultKey: 
 const WHEEL_SEGMENTS = [
   { label: "1x", color: "#f59e0b", mult: 1 },
   { label: "0x", color: "#71717a", mult: 0 },
-  { label: "1.2x", color: "#f59e0b", mult: 1.2 },
+  { label: "3x", color: "#f59e0b", mult: 3 },
   { label: "0x", color: "#71717a", mult: 0 },
   { label: "1.5x", color: "#f59e0b", mult: 1.5 },
   { label: "0x", color: "#71717a", mult: 0 },
@@ -574,7 +574,7 @@ const WHEEL_SEGMENTS = [
   { label: "0x", color: "#71717a", mult: 0 },
   { label: "2x", color: "#f59e0b", mult: 2 },
   { label: "0x", color: "#71717a", mult: 0 },
-  { label: "4.02x", color: "#dc2626", mult: 4.02 },
+  { label: "10x", color: "#dc2626", mult: 10 },
   { label: "0x", color: "#71717a", mult: 0 },
 ];
 const ROULETTE_RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
