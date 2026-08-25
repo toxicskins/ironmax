@@ -151,19 +151,24 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "wheel", name: "Fortune Wheel", category: "wheel", minStake: 1, maxStake: 500,
-    description: "Spin the wheel. It lands on one of six multipliers, from 0x up to a rare jackpot segment.",
+    description: "Spin the wheel. 12 unequal-sized segments — grey losses and small wins, yellow bigger wins, red rare jackpots.",
     rules: [
-      "0x segment (40% of the wheel): lose your stake",
-      "0.96x segment (30% of the wheel)",
-      "1.32x segment (15% of the wheel)",
-      "1.8x segment (10% of the wheel)",
-      "3.6x segment (4% of the wheel)",
-      "12x jackpot segment (1% of the wheel)",
+      "Grey segments (0x, or 1x-1.5x): lose your stake, or a small win",
+      "Yellow segments (2x-8x): a solid win",
+      "Red segments (12x, 36.5x): rare jackpots",
+      "Segment size on the wheel reflects its real odds — the red jackpots are thin slivers on purpose",
     ],
+    // Segments are unequal-sized wedges (weight = share of the wheel, matching real odds), not
+    // 12 equal slices — that's the only way to have a genuine rare jackpot (12x/36.5x) without
+    // it eating the whole RTP budget: at equal 1-in-12 odds a 12x segment alone would already
+    // account for the entire 96% target. WHEEL_SEGMENTS in GameResultView.tsx must mirror this
+    // list exactly (value + weight) so the drawn wedge sizes match these real odds.
     play: (next) => {
       const mult = weightedPick(next, [
-        { weight: 40, value: 0 }, { weight: 30, value: 0.96 }, { weight: 15, value: 1.32 },
-        { weight: 10, value: 1.8 }, { weight: 4, value: 3.6 }, { weight: 1, value: 12 },
+        { weight: 320, value: 0 }, { weight: 150, value: 0 },
+        { weight: 180, value: 1 }, { weight: 110, value: 1.2 }, { weight: 90, value: 1.5 },
+        { weight: 70, value: 2 }, { weight: 40, value: 2.5 }, { weight: 20, value: 3.5 }, { weight: 10, value: 5 }, { weight: 4, value: 8 },
+        { weight: 4, value: 12 }, { weight: 2, value: 36.5 },
       ]);
       return { multiplier: mult, detail: { segment: mult } };
     },

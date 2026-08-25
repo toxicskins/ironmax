@@ -90,15 +90,28 @@ function Reel({ symbol, index, resultKey }: { symbol: string; index: number; res
 
 /** A real conic-gradient wheel that spins several full turns and settles with `targetIndex`'s segment under the fixed top pointer. */
 function SpinWheel({ segments, targetIndex, resultKey, size = 300 }: {
-  segments: { label: string; color: string; textColor?: string }[];
+  segments: { label: string; color: string; textColor?: string; weight?: number }[];
   targetIndex: number;
   resultKey: string;
   size?: number;
 }) {
   const n = segments.length;
-  const step = 360 / n;
-  const gradient = segments.map((s, i) => `${s.color} ${i * step}deg ${(i + 1) * step}deg`).join(", ");
-  const targetAngle = 8 * 360 - (targetIndex * step + step / 2);
+  // Wedge angle is proportional to `weight` (defaulting to equal shares when omitted, e.g.
+  // roulette's 37 same-odds pockets) — a rare jackpot segment should be a visibly thin sliver,
+  // not the same size as a common one, so the wheel's own geometry communicates the real odds.
+  const totalWeight = segments.reduce((s, seg) => s + (seg.weight ?? 1), 0);
+  const starts = useMemo(() => {
+    let acc = 0;
+    return segments.map((seg) => {
+      const start = acc;
+      acc += ((seg.weight ?? 1) / totalWeight) * 360;
+      return start;
+    });
+  }, [segments, totalWeight]);
+  const angleOf = (i: number) => ((segments[i].weight ?? 1) / totalWeight) * 360;
+  const gradient = segments.map((s, i) => `${s.color} ${starts[i]}deg ${starts[i] + angleOf(i)}deg`).join(", ");
+  const targetMid = starts[targetIndex] + angleOf(targetIndex) / 2;
+  const targetAngle = 8 * 360 - targetMid;
   const showLabels = n <= 8;
 
   return (
@@ -117,7 +130,7 @@ function SpinWheel({ segments, targetIndex, resultKey, size = 300 }: {
             <div
               key={i}
               className="absolute inset-0 flex justify-center"
-              style={{ transform: `rotate(${i * step + step / 2}deg)` }}
+              style={{ transform: `rotate(${starts[i] + angleOf(i) / 2}deg)` }}
             >
               <span
                 className="text-base sm:text-lg font-bold mt-4"
@@ -517,10 +530,22 @@ function CrashGraph({ crashPoint, resultKey }: { crashPoint: number; resultKey: 
   );
 }
 
+// Mirrors the weighted segment list in src/lib/games/registry.ts (wheel) exactly — value AND
+// weight — so the wedge each color/size represents on screen matches the real server odds.
+// Grey = a loss or a small win (<=1.5x), yellow = a solid win, red = a rare jackpot.
 const WHEEL_SEGMENTS = [
-  { label: "0x", color: "#3f3f46", mult: 0 }, { label: "1x", color: "#f59e0b", mult: 1 },
-  { label: "1.3x", color: "#3f3f46", mult: 1.3 }, { label: "1.8x", color: "#f59e0b", mult: 1.8 },
-  { label: "3.5x", color: "#3f3f46", mult: 3.5 }, { label: "12x", color: "#dc2626", mult: 12 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 320 },
+  { label: "0x", color: "#71717a", mult: 0, weight: 150 },
+  { label: "1x", color: "#71717a", mult: 1, weight: 180 },
+  { label: "1.2x", color: "#71717a", mult: 1.2, weight: 110 },
+  { label: "1.5x", color: "#71717a", mult: 1.5, weight: 90 },
+  { label: "2x", color: "#f59e0b", mult: 2, weight: 70 },
+  { label: "2.5x", color: "#f59e0b", mult: 2.5, weight: 40 },
+  { label: "3.5x", color: "#f59e0b", mult: 3.5, weight: 20 },
+  { label: "5x", color: "#f59e0b", mult: 5, weight: 10 },
+  { label: "8x", color: "#f59e0b", mult: 8, weight: 4 },
+  { label: "12x", color: "#dc2626", mult: 12, weight: 4 },
+  { label: "36.5x", color: "#dc2626", mult: 36.5, weight: 2 },
 ];
 const ROULETTE_RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 // Real European single-zero wheel order (not sequential 0–36) — using plain 0..36 order made
