@@ -5,7 +5,7 @@ import { GamePreview } from "./GamePreview";
 import { themeFor } from "./[key]/theme";
 
 const CATEGORY_LABEL: Record<string, string> = {
-  slots: "Slots", dice: "Dice", wheel: "Wheel & Table", board: "Board", cards: "Cards", crash: "Crash",
+  slots: "Slots", dice: "Dice", wheel: "Wheel & Table", board: "Board", cards: "Cards",
 };
 
 type GameSummary = { key: string; name: string; category: string; minStake: number; maxStake: number };

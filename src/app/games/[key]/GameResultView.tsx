@@ -13,11 +13,21 @@ const SYMBOL_ICON: Record<string, React.ComponentType<{ className?: string }>> =
   GRAPE: IconGrape, WATERMELON: IconWatermelon, ORANGE: IconOrange, PLUM: IconPlum, STAR: IconStar,
 };
 
+// Memory Flip's 4 pair labels (A-D, from the server) mapped to distinct icons for display —
+// the label itself is just an internal pair id, never shown as text.
+const MEMORY_PAIR_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  A: IconCherry, B: IconLemon, C: IconBell, D: IconBar,
+};
+
 // @letele/playing-cards names cards as <SuitLetter><rankLetter>, e.g. "Sk" = King of Spades.
 const SUIT_LETTER: Record<string, string> = { "♠": "S", "♥": "H", "♦": "D", "♣": "C" };
 const RANK_LETTER: Record<string, string> = { J: "j", Q: "q", K: "k", A: "a" };
 
-function Card({ card, index, resultKey }: { card: string; index: number; resultKey: string }) {
+// A card slides in from above while it flips — reads as being dealt off the top of the deck
+// rather than just fading into place. `delay` overrides the index-based default so callers that
+// deal cards in a specific real-world order (e.g. blackjack alternating player/dealer) can pace
+// each card explicitly instead of everything in a row landing on the same stagger.
+function Card({ card, index, resultKey, delay }: { card: string; index: number; resultKey: string; delay?: number }) {
   const suit = card.slice(-1);
   const rank = card.slice(0, -1);
   const name = `${SUIT_LETTER[suit] ?? "S"}${RANK_LETTER[rank] ?? rank}`;
@@ -28,20 +38,312 @@ function Card({ card, index, resultKey }: { card: string; index: number; resultK
       key={`${resultKey}-${index}`}
       className="w-16 h-[90px] sm:w-28 sm:h-[157px] lg:w-36 lg:h-[201px] drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]"
       style={{ perspective: 400 }}
-      initial={{ rotateY: 180, opacity: 0 }}
-      animate={{ rotateY: 0, opacity: 1 }}
-      transition={{ delay: index * 0.15, duration: 0.4, ease: "easeOut" }}
+      initial={{ rotateY: 180, opacity: 0, y: -24 }}
+      animate={{ rotateY: 0, opacity: 1, y: 0 }}
+      transition={{ delay: delay ?? index * 0.15, duration: 0.35, ease: "easeOut" }}
     >
       <Face style={{ width: "100%", height: "100%" }} />
     </motion.div>
   );
 }
 
-function CardRow({ cards, resultKey }: { cards: string[]; resultKey: string }) {
-  return <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">{cards.map((c, i) => <Card key={i} card={c} index={i} resultKey={resultKey} />)}</div>;
+export function CardBack({ index, delay }: { index: number; delay?: number }) {
+  return (
+    <motion.div
+      className="w-16 h-[90px] sm:w-28 sm:h-[157px] lg:w-36 lg:h-[201px] rounded-lg bg-gradient-to-br from-indigo-900 to-zinc-950 border-2 border-indigo-500/30 shadow-[0_8px_16px_rgba(0,0,0,0.6)] flex items-center justify-center"
+      initial={{ rotateY: 180, opacity: 0, y: -24 }}
+      animate={{ rotateY: 0, opacity: 1, y: 0 }}
+      transition={{ delay: delay ?? index * 0.15, duration: 0.35, ease: "easeOut" }}
+    >
+      <div className="w-8 h-8 rounded-full border-2 border-indigo-400/40" />
+    </motion.div>
+  );
+}
+
+export function CardRow({ cards, resultKey, delays }: { cards: string[]; resultKey: string; delays?: number[] }) {
+  return (
+    <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
+      {cards.map((c, i) => <Card key={i} card={c} index={i} resultKey={resultKey} delay={delays?.[i]} />)}
+    </div>
+  );
 }
 
 const ALL_SLOT_SYMBOLS = Object.keys(SYMBOL_ICON);
+
+// Mirrors the video-poker combo/multiplier list in registry.ts exactly, highest first — shown as
+// a mini paytable under every hand so the payout for whatever you just landed (or missed) is
+// visible in place, not just in the collapsed rules list.
+const POKER_PAYTABLE: [string, number][] = [
+  ["Straight flush", 144],
+  ["Four of a kind", 72],
+  ["Full house", 25.2],
+  ["Flush", 18],
+  ["Straight", 10.8],
+  ["Three of a kind", 8.64],
+  ["Two pair", 5.76],
+  ["Pair of 9s or better", 2.88],
+];
+
+/** Counts up to `value` starting `delay` seconds after mount — makes a hand total feel tallied, not just printed. */
+function CountUp({ value, delay, resultKey }: { value: number; delay: number; resultKey: string }) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    setShown(0);
+    const steps = Math.max(value, 1);
+    const stepMs = 350 / steps;
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let s = 1; s <= steps; s++) {
+      timers.push(setTimeout(() => { if (!cancelled) setShown(s); }, delay * 1000 + s * stepMs));
+    }
+    return () => { cancelled = true; timers.forEach(clearTimeout); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultKey, value]);
+  return <span>{shown}</span>;
+}
+
+const DIE_PIPS: Record<number, [number, number][]> = {
+  1: [[50, 50]],
+  2: [[28, 28], [72, 72]],
+  3: [[28, 28], [50, 50], [72, 72]],
+  4: [[28, 28], [72, 28], [28, 72], [72, 72]],
+  5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
+  6: [[28, 24], [72, 24], [28, 50], [72, 50], [28, 76], [72, 76]],
+};
+function Die({ value, resultKey, index }: { value: number; resultKey: string; index: number }) {
+  return (
+    <motion.div
+      key={`${resultKey}-${index}`}
+      className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+      initial={{ rotate: -180, scale: 0.4, opacity: 0 }}
+      animate={{ rotate: 0, scale: 1, opacity: 1 }}
+      transition={{ delay: index * 0.15, duration: 0.5, type: "spring" }}
+    >
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        {DIE_PIPS[value]?.map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="8" fill="#18181b" />)}
+      </svg>
+    </motion.div>
+  );
+}
+
+// A spread of 5 face-down tickets. Only the player's click decides which one opens — there is no
+// timeout or auto-pick, since the whole point is that it's their choice. Once picked, ALL 5
+// flip so you can see what the other 4 held too, but only the one you picked ever paid: the
+// other 4 values are cosmetic decoys from the server, not a "what you missed" of real money.
+const GOLDEN_TICKET_COUNT = 5;
+function GoldenTicketPile({ prize, decoys, resultKey, onRevealed }: {
+  prize: number; decoys: number[]; resultKey: string; onRevealed?: () => void;
+}) {
+  const [chosen, setChosen] = useState<number | null>(null);
+  useEffect(() => setChosen(null), [resultKey]);
+
+  // The real prize always lands on whichever card was actually clicked — the other 4 slots get
+  // the decoys, in order. Computed from `chosen`, not a separate random slot, so "yours" can
+  // never point at a different card than the one the player picked.
+  const arr = useMemo(() => {
+    if (chosen === null) return null;
+    const a = [...decoys];
+    a.splice(chosen, 0, prize);
+    return a;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosen, resultKey]);
+
+  const revealDelay = 0.15;
+  const flipDuration = 0.5;
+
+  function pick(i: number) {
+    if (chosen !== null) return;
+    setChosen(i);
+    setTimeout(() => onRevealed?.(), (revealDelay + flipDuration) * 1000);
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <motion.p
+        initial={{ opacity: 1 }}
+        animate={{ opacity: chosen === null ? 1 : 0 }}
+        className="text-sm text-zinc-400 h-5"
+      >
+        Pick a ticket to scratch
+      </motion.p>
+      <div className="flex gap-2 sm:gap-3">
+        {Array.from({ length: GOLDEN_TICKET_COUNT }, (_, i) => {
+          const isChosen = chosen === i;
+          const value = arr ? arr[i] : 0;
+          const won = value > 0;
+          return (
+            <div key={i} className="relative w-16 h-24 sm:w-20 sm:h-28" style={{ perspective: 600 }}>
+              <motion.button
+                type="button"
+                disabled={chosen !== null}
+                onClick={() => pick(i)}
+                className="absolute inset-0"
+                style={{ transformStyle: "preserve-3d", cursor: chosen === null ? "pointer" : "default" }}
+                initial={{ rotateY: 0 }}
+                animate={{ rotateY: chosen !== null ? 180 : 0 }}
+                whileHover={chosen === null ? { y: -4 } : undefined}
+                whileTap={chosen === null ? { scale: 0.95 } : undefined}
+                transition={{ delay: isChosen ? revealDelay : chosen !== null ? revealDelay + 0.1 : 0, duration: flipDuration, ease: "easeIn" }}
+              >
+                <div
+                  className="absolute inset-0 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 border-2 border-amber-300 flex items-center justify-center text-amber-950 text-3xl shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+                  style={{ backfaceVisibility: "hidden" }}
+                >
+                  ★
+                </div>
+                <div
+                  className={`absolute inset-0 rounded-xl border-2 flex items-center justify-center text-xl sm:text-2xl font-extrabold ${
+                    isChosen ? "ring-2 ring-amber-400" : ""
+                  } ${won ? "bg-zinc-950 border-emerald-400 text-emerald-400" : "bg-zinc-950 border-zinc-700 text-zinc-500"}`}
+                  style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                >
+                  {value}x
+                </div>
+              </motion.button>
+              {chosen !== null && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: revealDelay + flipDuration }}
+                  className={`absolute -bottom-4 left-0 right-0 text-center text-[10px] font-semibold uppercase tracking-wide ${
+                    isChosen ? "text-amber-400" : "text-zinc-600"
+                  }`}
+                >
+                  {isChosen ? "yours" : ""}
+                </motion.div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {chosen !== null && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: revealDelay + flipDuration + 0.3 }}
+          className="text-sm text-zinc-400 mt-2"
+        >
+          {prize > 0 ? "Your ticket paid out!" : "Your ticket was blank — no win"}
+        </motion.p>
+      )}
+    </div>
+  );
+}
+
+function shuffleClient<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// 8 face-down cards, no board layout until the player has picked 2 — the win/lose outcome is
+// already decided server-side (a plain 1-in-7 chance, matching a real 2-of-8 pair pick), but
+// which 2 cards form the "matching" pair only gets assigned once you've actually chosen them, so
+// the pair you flip is always the one you picked, never a fixed board you're just clicking into.
+const TWIN_FLIP_LABELS = ["A", "B", "C", "D"];
+function TwinFlipBoard({ matched, resultKey, onRevealed }: {
+  matched: boolean; resultKey: string; onRevealed?: () => void;
+}) {
+  const [picks, setPicks] = useState<number[]>([]);
+  useEffect(() => setPicks([]), [resultKey]);
+
+  const labels = useMemo(() => {
+    if (picks.length < 2) return null;
+    const [a, b] = picks;
+    const arr = new Array<string>(8);
+    const otherSlots = Array.from({ length: 8 }, (_, i) => i).filter((i) => i !== a && i !== b);
+    if (matched) {
+      arr[a] = TWIN_FLIP_LABELS[0];
+      arr[b] = TWIN_FLIP_LABELS[0];
+      const rest = shuffleClient([1, 1, 2, 2, 3, 3].map((n) => TWIN_FLIP_LABELS[n]));
+      otherSlots.forEach((slot, i) => { arr[slot] = rest[i]; });
+    } else {
+      arr[a] = TWIN_FLIP_LABELS[0];
+      arr[b] = TWIN_FLIP_LABELS[1];
+      const rest = shuffleClient([0, 1, 2, 2, 3, 3].map((n) => TWIN_FLIP_LABELS[n]));
+      otherSlots.forEach((slot, i) => { arr[slot] = rest[i]; });
+    }
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks.length === 2, resultKey]);
+
+  const flipDelay = 0.2, flipDuration = 0.5;
+
+  function pick(i: number) {
+    if (picks.length >= 2 || picks.includes(i)) return;
+    const next = [...picks, i];
+    setPicks(next);
+    if (next.length === 2) setTimeout(() => onRevealed?.(), (flipDelay + flipDuration) * 1000);
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <motion.p
+        initial={{ opacity: 1 }}
+        animate={{ opacity: labels ? 0 : 1 }}
+        className="text-sm text-zinc-400 h-5"
+      >
+        Pick 2 cards to flip ({picks.length}/2)
+      </motion.p>
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-fit mx-auto" style={{ perspective: 600 }}>
+        {Array.from({ length: 8 }, (_, i) => {
+          const isPicked = picks.includes(i);
+          const Icon = labels ? MEMORY_PAIR_ICON[labels[i]] : undefined;
+          return (
+            <motion.button
+              key={i}
+              type="button"
+              disabled={picks.length >= 2}
+              onClick={() => pick(i)}
+              className="relative w-16 h-16 sm:w-20 sm:h-20"
+              style={{ perspective: 600, cursor: picks.length < 2 ? "pointer" : "default" }}
+              whileHover={picks.length < 2 ? { y: -3 } : undefined}
+              whileTap={picks.length < 2 ? { scale: 0.95 } : undefined}
+            >
+              <motion.div
+                className="absolute inset-0"
+                style={{ transformStyle: "preserve-3d" }}
+                initial={{ rotateY: 0 }}
+                animate={{ rotateY: labels ? 180 : 0 }}
+                transition={{ delay: labels ? flipDelay : 0, duration: flipDuration, ease: "easeIn" }}
+              >
+                <div
+                  className={`absolute inset-0 rounded-lg bg-gradient-to-br from-indigo-800 to-zinc-950 border-2 flex items-center justify-center text-indigo-200 text-xl font-extrabold ${
+                    isPicked ? "border-amber-400" : "border-indigo-500/40"
+                  }`}
+                  style={{ backfaceVisibility: "hidden" }}
+                >
+                  ?
+                </div>
+                <div
+                  className={`absolute inset-0 rounded-lg bg-zinc-950 border-2 flex items-center justify-center p-2 ${
+                    isPicked ? (matched ? "border-emerald-400" : "border-red-400") : "border-zinc-700"
+                  }`}
+                  style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                >
+                  {labels && (Icon ? <Icon className="w-full h-full" /> : labels[i])}
+                </div>
+              </motion.div>
+            </motion.button>
+          );
+        })}
+      </div>
+      {labels && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: flipDelay + flipDuration }}
+          className="text-sm text-zinc-400"
+        >
+          {matched ? "Matched! Both picks show the same card" : "No match — your two picks differ"}
+        </motion.p>
+      )}
+    </div>
+  );
+}
 
 // A reel that visibly spins through a strip of random filler symbols before landing on the
 // real result — each reel stops a bit later than the last, like a real slot machine — instead
@@ -503,56 +805,6 @@ function PlinkoBoard({ bucket, rows, resultKey }: { bucket: number; rows: number
   );
 }
 
-/** A rising flight path to the crash point, with a fixed 2x cashout marker so the outcome reads at a glance. */
-function CrashGraph({ crashPoint, resultKey }: { crashPoint: number; resultKey: string }) {
-  const won = crashPoint >= 2;
-  const width = 420, height = 220;
-  const clampedMult = Math.min(crashPoint, 12);
-  const endX = width - 24;
-  const endY = height - 16 - Math.min(height - 40, Math.log2(clampedMult + 1) * 64);
-  const path = `M 14 ${height - 16} Q ${width * 0.5} ${height - 16}, ${endX} ${endY}`;
-  const cashoutY = height - 16 - Math.log2(2 + 1) * 64;
-  const color = won ? "#34d399" : "#f87171";
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="flex items-center gap-2 text-sm text-zinc-400">
-        <span className="w-3 h-px bg-zinc-500" style={{ borderTop: "1px dashed #a1a1aa" }} />
-        Fixed cash-out target: <span className="font-bold text-zinc-200">2.00x</span>
-      </div>
-      <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} className="overflow-visible max-w-full">
-        {[0.25, 0.5, 0.75].map((f) => (
-          <line key={f} x1="14" y1={height - 16 - f * (height - 40)} x2={width - 14} y2={height - 16 - f * (height - 40)} stroke="#27272a" strokeWidth="1" />
-        ))}
-        <line x1="14" y1={cashoutY} x2={width - 14} y2={cashoutY} stroke="#a1a1aa" strokeDasharray="5 5" strokeWidth="1.5" />
-        <motion.path
-          key={resultKey}
-          d={path}
-          fill="none"
-          stroke={color}
-          strokeWidth="4"
-          strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 8px ${color})` }}
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1.4, ease: "easeIn" }}
-        />
-        <motion.circle
-          key={`${resultKey}-dot`}
-          r="6"
-          fill={color}
-          initial={{ cx: 10, cy: height - 10 }}
-          animate={{ cx: endX, cy: endY }}
-          transition={{ duration: 1.4, ease: "easeIn" }}
-        />
-      </svg>
-      <div className={`text-4xl sm:text-5xl font-extrabold ${won ? "text-emerald-400" : "text-red-400"}`} style={{ filter: `drop-shadow(0 0 20px ${color})` }}>
-        ×{crashPoint.toFixed(2)}
-      </div>
-    </div>
-  );
-}
-
 // Mirrors the weighted segment list in src/lib/games/registry.ts (wheel) exactly — value AND
 // weight — so the wedge each color/size represents on screen matches the real server odds.
 // Grey = a loss or a small win (<=1.5x), yellow = a solid win, red = a rare jackpot.
@@ -563,6 +815,11 @@ function CrashGraph({ crashPoint, resultKey }: { crashPoint: number; resultKey: 
 // 1-in-12 segment can pay without the other 11 segments' odds becoming fake.
 // Strict win/lose/win/lose order all the way around — see the comment in registry.ts's wheel
 // entry.
+// Mirrors registry.ts's TANK_MULT/TANK_ZONES exactly — 5 markers, near = common/cheap,
+// far = rare/big, so the payout each marker pays server-side matches what's drawn on screen.
+const TANK_MULT = [2.4, 3.2, 6.4, 9.6, 19.2];
+const TANK_MARKER_X = [90, 170, 250, 330, 400];
+
 const WHEEL_SEGMENTS = [
   { label: "1x", color: "#f59e0b", mult: 1 },
   { label: "0x", color: "#71717a", mult: 0 },
@@ -585,7 +842,9 @@ const ROULETTE_WHEEL_ORDER = [
   0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,
 ];
 
-export function GameResultView({ category, gameKey, detail, win }: { category: string; gameKey: string; detail: Record<string, unknown>; win: boolean }) {
+export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
+  category: string; gameKey: string; detail: Record<string, unknown>; win: boolean; onRevealed?: () => void;
+}) {
   const resultKey = JSON.stringify(detail);
 
   switch (category) {
@@ -594,6 +853,164 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
       return <div className="flex gap-3 sm:gap-4 justify-center">{reels.map((s, i) => <Reel key={i} symbol={s} index={i} resultKey={resultKey} />)}</div>;
     }
     case "dice": {
+      if (gameKey === "sic-bo") {
+        const dice = detail.dice as number[];
+        const sum = detail.sum as number;
+        const bet = detail.bet as string;
+        const number = detail.number as number | undefined;
+        const isTriple = detail.isTriple as boolean;
+        const betLabel = bet === "triple" ? `triple ${number}s` : bet === "any-triple" ? "any triple" : bet;
+        return (
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex gap-3">
+              {dice.map((v, i) => <Die key={i} value={v} index={i} resultKey={resultKey} />)}
+            </div>
+            <div className="text-2xl font-extrabold text-zinc-200">Total: {sum}</div>
+            <div className="text-sm text-zinc-400">
+              You bet <span className="capitalize text-amber-400 font-semibold">{betLabel}</span>
+              {isTriple && bet !== "triple" && bet !== "any-triple" && (
+                <span className="text-red-400 font-semibold"> — triple! Both sides lose</span>
+              )}
+            </div>
+          </div>
+        );
+      }
+      if (gameKey === "tank-shot") {
+        const landed = detail.landed as number;
+        const target = detail.target as number;
+        const win = landed === target;
+        const width = 420, height = 160, groundY = 128;
+        const markerX = TANK_MARKER_X;
+        const fireAt = 0.35;
+        const flightDuration = 1;
+        const impactAt = fireAt + flightDuration;
+        const startX = 48, startY = groundY - 30, endX = markerX[landed], endY = groundY - 6;
+        const ctrlX = (startX + endX) / 2, ctrlY = startY - 60 - Math.abs(endX - startX) * 0.35;
+        // Sample the quadratic bezier by hand into keyframe points — framer-motion animates
+        // cx/cy keyframe arrays reliably everywhere, unlike CSS motion-path on SVG shapes.
+        const arcSteps = 12;
+        const bezier = (t: number, p0: number, p1: number, p2: number) => (1 - t) ** 2 * p0 + 2 * (1 - t) * t * p1 + t ** 2 * p2;
+        const arcXs = Array.from({ length: arcSteps + 1 }, (_, i) => bezier(i / arcSteps, startX, ctrlX, endX));
+        const arcYs = Array.from({ length: arcSteps + 1 }, (_, i) => bezier(i / arcSteps, startY, ctrlY, endY));
+        const shellPath = `M ${arcXs.map((x, i) => `${x} ${arcYs[i]}`).join(" L ")}`;
+        const impactColor = win ? "#34d399" : "#f87171";
+        return (
+          <div className="flex flex-col items-center gap-3">
+            <motion.svg
+              viewBox={`0 0 ${width} ${height}`} width={width} height={height} className="max-w-full rounded-lg"
+              initial={{ scale: 1 }}
+              animate={{ scale: [1, 1.015, 1] }}
+              transition={{ delay: impactAt, duration: 0.25 }}
+            >
+              <defs>
+                <linearGradient id="tank-sky" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#1e293b" />
+                  <stop offset="1" stopColor="#0c1420" />
+                </linearGradient>
+                <radialGradient id="tank-sun" cx="0.5" cy="0.5" r="0.5">
+                  <stop offset="0" stopColor="#fbbf24" stopOpacity="0.5" />
+                  <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+              <rect x="0" y="0" width={width} height={height} fill="url(#tank-sky)" />
+              <circle cx="370" cy="30" r="45" fill="url(#tank-sun)" />
+              <circle cx="370" cy="30" r="10" fill="#fde68a" opacity="0.7" />
+              <rect x="0" y={groundY} width={width} height={height - groundY} fill="#1c1917" />
+              <line x1="0" y1={groundY} x2={width} y2={groundY} stroke="#44403c" strokeWidth="2" />
+
+              {/* tank: tracks, hull, turret, recoiling barrel */}
+              <g>
+                <rect x="6" y={groundY - 12} width="34" height="7" rx="2" fill="#292524" />
+                <rect x="10" y={groundY - 22} width="26" height="12" rx="3" fill="#3f6212" />
+                <circle cx="24" cy={groundY - 24} r="8" fill="#4d7c0f" />
+                <motion.line
+                  x1="30" y1={groundY - 26} x2="48" y2={groundY - 34}
+                  stroke="#84cc16" strokeWidth="4" strokeLinecap="round"
+                  initial={{ x2: 48, y2: groundY - 34 }}
+                  animate={{ x2: [48, 40, 48], y2: [groundY - 34, groundY - 30, groundY - 34] }}
+                  transition={{ delay: fireAt, duration: 0.2 }}
+                />
+              </g>
+              {/* muzzle flash */}
+              <motion.circle
+                cx="50" cy={groundY - 35} r="9" fill="#fde68a"
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: [0, 1, 0], scale: [0.3, 1.4, 0.3] }}
+                transition={{ delay: fireAt, duration: 0.25 }}
+                style={{ transformOrigin: "50px " + (groundY - 35) + "px" }}
+              />
+
+              {/* dashed trajectory that draws in as the shell flies */}
+              <motion.path
+                d={shellPath} fill="none" stroke="#fbbf24" strokeWidth="1.5" strokeDasharray="3 4" opacity="0.5"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ delay: fireAt, duration: flightDuration, ease: "linear" }}
+              />
+
+              {markerX.map((mx, i) => (
+                <g key={i}>
+                  <line x1={mx} y1={groundY} x2={mx} y2={groundY - 26} stroke={i === target ? "#fbbf24" : "#57534e"} strokeWidth="2" />
+                  <motion.path
+                    d={`M ${mx} ${groundY - 26} L ${mx + 14} ${groundY - 21} L ${mx} ${groundY - 16} Z`}
+                    fill={i === target ? "#fbbf24" : "#78716c"}
+                    animate={i === target ? { x: [0, -2, 0] } : undefined}
+                    transition={{ duration: 1.4, repeat: Infinity }}
+                  />
+                  <circle cx={mx} cy={groundY} r={i === target ? 7 : 4.5} fill="#292524" stroke={i === target ? "#fbbf24" : "#57534e"} strokeWidth="2" />
+                  <text x={mx} y={groundY + 20} textAnchor="middle" fontSize="11" fontWeight="600" fill={i === target ? "#fbbf24" : "#78716c"}>{TANK_MULT[i]}x</text>
+                </g>
+              ))}
+
+              {/* smoke trail: several fading puffs chasing the shell a few steps behind along the same arc */}
+              {[3, 2, 1].map((lag) => (
+                <motion.circle
+                  key={lag}
+                  r={4 - lag * 0.6}
+                  fill="#a8a29e"
+                  initial={{ cx: arcXs[0], cy: arcYs[0], opacity: 0 }}
+                  animate={{ cx: arcXs.slice(0, arcXs.length - lag), cy: arcYs.slice(0, arcYs.length - lag), opacity: [0, 0.5, 0.5, 0] }}
+                  transition={{ delay: fireAt + lag * 0.03, duration: flightDuration, ease: "linear" }}
+                />
+              ))}
+
+              {/* the shell itself, following the exact arc path */}
+              <motion.circle
+                key={resultKey}
+                r="4.5"
+                fill="#fde68a"
+                initial={{ cx: arcXs[0], cy: arcYs[0] }}
+                animate={{ cx: arcXs, cy: arcYs }}
+                transition={{ delay: fireAt, duration: flightDuration, ease: "linear" }}
+                style={{ filter: "drop-shadow(0 0 6px rgba(253,230,138,0.9))" }}
+              />
+
+              {/* impact burst */}
+              {[0, 1, 2].map((i) => (
+                <motion.circle
+                  key={`burst-${i}`}
+                  cx={markerX[landed]} cy={groundY}
+                  r="2"
+                  fill="none"
+                  stroke={impactColor}
+                  strokeWidth="2"
+                  initial={{ opacity: 0, r: 2 }}
+                  animate={{ opacity: [0, 0.8, 0], r: [2, 20 + i * 8, 24 + i * 8] }}
+                  transition={{ delay: impactAt + i * 0.06, duration: 0.5, ease: "easeOut" }}
+                />
+              ))}
+            </motion.svg>
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: impactAt + 0.15 }}
+              className={`text-lg font-bold ${win ? "text-emerald-400" : "text-red-400"}`}
+            >
+              {win ? `Direct hit on marker ${target + 1}!` : `Aimed at marker ${target + 1}, landed on marker ${landed + 1}`}
+            </motion.div>
+          </div>
+        );
+      }
       const roll = detail.roll as number;
       const targetBp = detail.targetBp as number;
 
@@ -648,6 +1065,150 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
       return <SpinWheel segments={WHEEL_SEGMENTS} targetIndex={targetIndex} resultKey={resultKey} size={360} />;
     }
     case "board": {
+      if ("called" in detail) {
+        const called = detail.called as number[];
+        const winLine = detail.winLine as number[] | null;
+        // Numbers "call" in the order they were drawn, not grid order — reads like a real bingo
+        // caller going number by number, and the completed line only lights up once every call
+        // has landed, so you can't tell a line is done before the last number in it is called.
+        const callOrder = new Map(called.map((pos, i) => [pos, i]));
+        const callStep = 0.28;
+        const revealedAt = called.length * callStep + 0.3;
+        return (
+          <div className="flex flex-col items-center gap-3">
+            {/* Balls drop into the caller tray one at a time, in draw order — a real bingo caller
+                announces one number at a time instead of dumping the whole card at once, and the
+                grid cell for each number lights up on the same beat as its ball lands. */}
+            <div className="flex flex-wrap justify-center gap-1.5 max-w-xs min-h-[2.25rem]">
+              {called.map((pos, i) => (
+                <motion.div
+                  key={`${resultKey}-ball-${i}`}
+                  initial={{ scale: 0, y: -16, opacity: 0 }}
+                  animate={{ scale: 1, y: 0, opacity: 1 }}
+                  transition={{ delay: i * callStep, type: "spring", stiffness: 300, damping: 16 }}
+                  className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 border border-amber-200 flex items-center justify-center text-[11px] font-extrabold text-amber-950 shadow-[0_2px_6px_rgba(0,0,0,0.4)]"
+                >
+                  {pos + 1}
+                </motion.div>
+              ))}
+            </div>
+            <div className="grid grid-cols-5 gap-1 sm:gap-1.5 w-fit mx-auto">
+              {Array.from({ length: 25 }, (_, i) => {
+                const order = callOrder.get(i);
+                const isCalled = order !== undefined;
+                const onLine = winLine?.includes(i) ?? false;
+                return (
+                  <div
+                    key={`${resultKey}-${i}`}
+                    className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-md flex items-center justify-center text-xs sm:text-sm font-bold border-2 bg-zinc-900 text-zinc-600 border-zinc-800"
+                  >
+                    {i + 1}
+                    {/* Green only fades in exactly on this number's own beat in the call order —
+                        not at mount, so an uncalled number can't be told apart from a called one
+                        by squinting at a faint color before its turn. */}
+                    {isCalled && (
+                      <motion.div
+                        className="absolute inset-0 rounded-md bg-emerald-700 text-white border-2 border-emerald-500 flex items-center justify-center"
+                        initial={{ opacity: 0, scale: 0.7 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: (order as number) * callStep, type: "spring" }}
+                      >
+                        {i + 1}
+                      </motion.div>
+                    )}
+                    {/* The gold "this is part of the completed line" color only appears once the
+                        whole line is confirmed (revealedAt) — never earlier, even for a number
+                        that happened to already be called, so a line can't be spotted early. */}
+                    {onLine && (
+                      <motion.div
+                        className="absolute inset-0 rounded-md bg-amber-500 text-zinc-950 border-2 border-amber-300 flex items-center justify-center"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: revealedAt, duration: 0.3 }}
+                      >
+                        {i + 1}
+                      </motion.div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: revealedAt }}
+              className="text-sm text-zinc-400"
+            >
+              {winLine ? "Line complete — gold squares" : `${called.length} numbers called, no line yet`}
+            </motion.p>
+          </div>
+        );
+      }
+      if ("prize" in detail) {
+        return (
+          <GoldenTicketPile
+            prize={detail.prize as number}
+            decoys={detail.decoys as number[]}
+            resultKey={resultKey}
+            onRevealed={onRevealed}
+          />
+        );
+      }
+      if ("cells" in detail) {
+        const cells = detail.cells as string[];
+        const winLine = detail.winLine as number[] | null;
+        // Cells flip one at a time, left-to-right — real scratch-card pacing — but the win/lose
+        // line highlight and outcome text only appear once the LAST cell has flipped, so seeing
+        // symbols land one by one never tips you off before the full card is revealed.
+        const flipStagger = 0.18;
+        const flipDuration = 0.4;
+        const revealedAt = (cells.length - 1) * flipStagger + flipDuration;
+        return (
+          <div>
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-fit mx-auto" style={{ perspective: 600 }}>
+              {cells.map((sym, i) => {
+                const Icon = SYMBOL_ICON[sym];
+                const onLine = winLine?.includes(i) ?? false;
+                return (
+                  <div key={`${resultKey}-${i}`} className="relative w-16 h-16 sm:w-20 sm:h-20">
+                    <motion.div
+                      className="absolute inset-0"
+                      style={{ transformStyle: "preserve-3d" }}
+                      initial={{ rotateY: 0 }}
+                      animate={{ rotateY: 180 }}
+                      transition={{ delay: i * flipStagger, duration: flipDuration, ease: "easeIn" }}
+                    >
+                      <div
+                        className="absolute inset-0 rounded-lg bg-gradient-to-br from-amber-600 to-amber-800 border-2 border-amber-500/40 flex items-center justify-center text-amber-200 text-2xl font-extrabold"
+                        style={{ backfaceVisibility: "hidden" }}
+                      >
+                        ?
+                      </div>
+                      <motion.div
+                        className="absolute inset-0 rounded-lg bg-zinc-950 border-2 flex items-center justify-center p-2"
+                        style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                        initial={{ borderColor: "#3f3f46", boxShadow: "0 0 0px rgba(245,158,11,0)" }}
+                        animate={onLine ? { borderColor: "#fbbf24", boxShadow: "0 0 20px -2px rgba(245,158,11,0.9)" } : undefined}
+                        transition={{ delay: revealedAt, duration: 0.3 }}
+                      >
+                        {Icon ? <Icon className="w-full h-full" /> : sym}
+                      </motion.div>
+                    </motion.div>
+                  </div>
+                );
+              })}
+            </div>
+            <motion.p
+              className="text-center text-sm text-zinc-400 mt-3"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: revealedAt }}
+            >
+              {winLine ? "Matching line — gold outline" : "No matching line of 3"}
+            </motion.p>
+          </div>
+        );
+      }
       if ("grid" in detail) {
         const grid = detail.grid as boolean[];
         const picks = detail.picks as number;
@@ -734,10 +1295,62 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
     }
     case "cards": {
       if ("current" in detail) {
-        return <CardRow cards={[detail.current as string, detail.nextCard as string]} resultKey={resultKey} />;
+        const guess = detail.guess as string | undefined;
+        return (
+          <div className="flex flex-col items-center gap-2">
+            <CardRow cards={[detail.current as string, detail.nextCard as string]} resultKey={resultKey} />
+            {guess && (
+              <div className="text-sm text-zinc-400">
+                You guessed <span className="capitalize text-amber-400 font-semibold">{guess}</span>
+              </div>
+            )}
+          </div>
+        );
       }
       if ("hand" in detail) {
-        return <CardRow cards={detail.hand as string[]} resultKey={resultKey} />;
+        const combo = detail.combo as string | undefined;
+        const won = !!combo && combo !== "No winning hand";
+        const revealAt = 0.5;
+        return (
+          <div className="flex flex-col items-center gap-3">
+            <CardRow cards={detail.hand as string[]} resultKey={resultKey} />
+            {combo && (
+              <motion.div
+                initial={{ opacity: 0, y: 6, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: revealAt, type: "spring" }}
+                className={`text-lg font-extrabold px-4 py-1.5 rounded-full border-2 ${
+                  won
+                    ? "text-amber-300 border-amber-400 bg-amber-500/10 shadow-[0_0_20px_-4px_rgba(245,158,11,0.7)]"
+                    : "text-zinc-400 border-zinc-700 bg-zinc-900"
+                }`}
+              >
+                {combo}
+              </motion.div>
+            )}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: revealAt + 0.15 }}
+              className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-xs w-full max-w-md mt-1"
+            >
+              {POKER_PAYTABLE.map(([name, mult]) => (
+                <div
+                  key={name}
+                  className={`rounded px-2 py-1 flex items-center justify-between ${
+                    combo === name ? "bg-amber-500 text-zinc-950 font-bold" : "bg-zinc-900 text-zinc-500"
+                  }`}
+                >
+                  <span>{name}</span>
+                  <span>{mult}x</span>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+        );
+      }
+      if (gameKey === "memory-flip") {
+        return <TwinFlipBoard matched={detail.matched as boolean} resultKey={resultKey} onRevealed={onRevealed} />;
       }
       if ("player" in detail && "dealer" in detail) {
         return (
@@ -753,22 +1366,80 @@ export function GameResultView({ category, gameKey, detail, win }: { category: s
           </div>
         );
       }
-      return (
-        <div className="flex flex-col gap-5 items-center">
-          <div>
-            <div className="text-sm text-zinc-400 mb-2 text-center font-medium">Player ({String(detail.pv)})</div>
-            <CardRow cards={detail.player as string[]} resultKey={resultKey} />
+      {
+        // Baccarat: cards land first (each row's own stagger), then the point totals tally up,
+        // then the winning side lights up gold while the loser dims — the sequence itself is the
+        // explanation ("higher total, so that side glows"), not just a "X wins" line underneath.
+        const pv = detail.pv as number;
+        const bv = detail.bv as number;
+        const winner = detail.winner as "player" | "banker" | "tie";
+        const cardsSettleAt = 0.5;
+        const tallyAt = cardsSettleAt + 0.15;
+        const compareAt = tallyAt + 0.6;
+        const playerWins = winner === "player";
+        const bankerWins = winner === "banker";
+        return (
+          <div className="flex flex-col gap-4 items-center">
+            <motion.div
+              className="flex flex-col items-center rounded-xl p-3 border-2 border-transparent"
+              animate={winner === "tie" || playerWins ? {
+                borderColor: "#fbbf24", boxShadow: "0 0 24px -4px rgba(245,158,11,0.7)", opacity: 1,
+              } : { opacity: 0.45, filter: "grayscale(0.6)" }}
+              transition={{ delay: compareAt, duration: 0.4 }}
+            >
+              <div className="text-sm text-zinc-400 mb-2 text-center font-medium">Player</div>
+              <CardRow cards={detail.player as string[]} resultKey={resultKey} />
+              <motion.div
+                className="mt-2 text-3xl font-extrabold tabular-nums text-amber-400"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: tallyAt, type: "spring" }}
+              >
+                <CountUp value={pv} delay={tallyAt} resultKey={resultKey} />
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              className="text-xs text-zinc-500 font-semibold uppercase tracking-wide"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: tallyAt + 0.1 }}
+            >
+              vs
+            </motion.div>
+
+            <motion.div
+              className="flex flex-col items-center rounded-xl p-3 border-2 border-transparent"
+              animate={winner === "tie" || bankerWins ? {
+                borderColor: "#fbbf24", boxShadow: "0 0 24px -4px rgba(245,158,11,0.7)", opacity: 1,
+              } : { opacity: 0.45, filter: "grayscale(0.6)" }}
+              transition={{ delay: compareAt, duration: 0.4 }}
+            >
+              <div className="text-sm text-zinc-400 mb-2 text-center font-medium">Banker</div>
+              <CardRow cards={detail.banker as string[]} resultKey={`${resultKey}-b`} />
+              <motion.div
+                className="mt-2 text-3xl font-extrabold tabular-nums text-amber-400"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: tallyAt, type: "spring" }}
+              >
+                <CountUp value={bv} delay={tallyAt} resultKey={`${resultKey}-b`} />
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              className="text-amber-400 text-base font-bold text-center"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: compareAt + 0.2 }}
+            >
+              {winner === "tie"
+                ? `Tie at ${pv} — push`
+                : `${winner === "player" ? "Player" : "Banker"} wins, ${Math.max(pv, bv)} to ${Math.min(pv, bv)}`}
+            </motion.div>
           </div>
-          <div>
-            <div className="text-sm text-zinc-400 mb-2 text-center font-medium">Banker ({String(detail.bv)})</div>
-            <CardRow cards={detail.banker as string[]} resultKey={`${resultKey}-b`} />
-          </div>
-          <div className="text-amber-400 text-base font-bold capitalize">{String(detail.winner)} wins</div>
-        </div>
-      );
-    }
-    case "crash": {
-      return <CrashGraph crashPoint={detail.crashPoint as number} resultKey={resultKey} />;
+        );
+      }
     }
     default:
       return <pre className="text-xs text-zinc-500 overflow-x-auto">{JSON.stringify(detail, null, 2)}</pre>;
@@ -798,6 +1469,30 @@ export function IdlePreview({ category, gameKey }: { category: string; gameKey: 
   if (category === "dice") {
     if (gameKey === "limbo") {
       return <div className="text-4xl font-extrabold tabular-nums text-zinc-600">1.00x</div>;
+    }
+    if (gameKey === "sic-bo") {
+      return (
+        <div className="flex gap-3">
+          {[3, 5, 2].map((v, i) => <Die key={i} value={v} index={i} resultKey="idle" />)}
+        </div>
+      );
+    }
+    if (gameKey === "tank-shot") {
+      const groundY = 40;
+      return (
+        <svg viewBox="0 0 160 56" width="160" height="56">
+          <line x1="0" y1={groundY} x2="160" y2={groundY} stroke="#3f3f46" strokeWidth="2" />
+          <rect x="4" y={groundY - 10} width="20" height="7" rx="2" fill="#3f3f46" />
+          <rect x="7" y={groundY - 16} width="14" height="7" rx="2" fill="#52525b" />
+          <line x1="19" y1={groundY - 14} x2="30" y2={groundY - 20} stroke="#71717a" strokeWidth="2.5" strokeLinecap="round" />
+          {[70, 96, 122, 148].map((mx, i) => (
+            <g key={i}>
+              <line x1={mx} y1={groundY} x2={mx} y2={groundY - 9} stroke="#52525b" strokeWidth="1.5" />
+              <circle cx={mx} cy={groundY} r={3} fill="#27272a" stroke="#52525b" strokeWidth="1.5" />
+            </g>
+          ))}
+        </svg>
+      );
     }
     return (
       <div className="w-56">
@@ -842,6 +1537,33 @@ export function IdlePreview({ category, gameKey }: { category: string; gameKey: 
         </div>
       );
     }
+    if (gameKey === "golden-ticket") {
+      return (
+        <div className="flex gap-1.5">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="w-8 h-12 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 border border-amber-300/50 flex items-center justify-center text-amber-950 text-sm">
+              ★
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (gameKey === "bingo") {
+      return (
+        <div className="grid grid-cols-5 gap-1">
+          {Array.from({ length: 25 }, (_, i) => <div key={i} className="w-6 h-6 rounded bg-zinc-800" />)}
+        </div>
+      );
+    }
+    if (gameKey === "scratch-gold") {
+      return (
+        <div className="grid grid-cols-3 gap-1.5">
+          {Array.from({ length: 9 }, (_, i) => (
+            <div key={i} className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-600 to-amber-800 border border-amber-500/40" />
+          ))}
+        </div>
+      );
+    }
     // plinko
     return (
       <div className="flex flex-col gap-2">
@@ -862,7 +1584,6 @@ export function IdlePreview({ category, gameKey }: { category: string; gameKey: 
       </div>
     );
   }
-  // crash
   return (
     <svg viewBox="0 0 200 100" width="200" height="100">
       <path d="M 10 90 Q 100 90, 190 20" stroke="#71717a" strokeWidth="3" fill="none" strokeLinecap="round" />

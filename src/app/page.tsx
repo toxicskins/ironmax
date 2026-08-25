@@ -16,7 +16,7 @@ const STEPS = [
 ];
 
 const TRUST = [
-  { icon: "🎰", title: "16 games", body: "Slots, table games, crash — one lobby." },
+  { icon: "🎰", title: "16 games", body: "Slots, table games, wheels — one lobby." },
   { icon: "🔒", title: "Provably fair", body: "Every bet is seed-verifiable, no black box." },
   { icon: "⚡", title: "Instant results", body: "No waiting, no withdrawal delays — it's just for fun." },
   { icon: "📋", title: "Clear paytables", body: "Every game shows its exact rules and payouts up front." },
@@ -29,7 +29,7 @@ const HERO_STATS = [
 ];
 
 const CATEGORY_LABEL: Record<string, string> = {
-  slots: "Slots", dice: "Dice", wheel: "Wheel & Table", board: "Board", cards: "Cards", crash: "Crash",
+  slots: "Slots", dice: "Dice", wheel: "Wheel & Table", board: "Board", cards: "Cards",
 };
 
 function GameTile({ g }: { g: { key: string; name: string; category: string } }) {

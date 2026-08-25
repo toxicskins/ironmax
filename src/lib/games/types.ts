@@ -6,7 +6,7 @@ export type GameResult = {
 export type GameDef = {
   key: string;
   name: string;
-  category: "slots" | "dice" | "cards" | "crash" | "wheel" | "board";
+  category: "slots" | "dice" | "cards" | "wheel" | "board";
   minStake: number;
   maxStake: number;
   /** Shown to the player on the game page — how to read the table and what wins. */

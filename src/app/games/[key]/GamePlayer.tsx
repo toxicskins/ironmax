@@ -20,10 +20,19 @@ type BetResponse = {
 // How long each category's GameResultView animation takes to settle, so the win/loss
 // banner never spoils the outcome before the player has watched it play out.
 const REVEAL_DELAY_MS: Record<string, number> = {
-  slots: 3800, dice: 1700, wheel: 4200, board: 2000, cards: 1400, crash: 1800,
+  slots: 3800, dice: 1700, wheel: 4200, board: 2000, cards: 1400,
+};
+// Bingo calls its 13 numbers out one at a time (see GameResultView) — much longer than the rest
+// of the "board" category's near-instant reveals, so it needs its own longer wait here too.
+const GAME_REVEAL_DELAY_MS: Record<string, number> = {
+  bingo: 4200,
 };
 
-const GAMES_WITH_CONTROLS = new Set(["dice", "limbo", "coinflip", "roulette", "mines", "tower", "keno"]);
+const GAMES_WITH_CONTROLS = new Set(["limbo", "coinflip", "roulette", "mines", "tower", "keno", "sic-bo", "hilo", "tank-shot"]);
+
+// These games reveal on the player's own action inside the stage (picking a card/ticket) instead
+// of a fixed timer — see the `manualReveal` usage below.
+const MANUAL_REVEAL_GAMES = new Set(["golden-ticket", "memory-flip"]);
 
 function chipAmounts(min: number, max: number) {
   const raw = [min, min * 5, min * 25, max];
@@ -74,6 +83,25 @@ export function GamePlayer({
   const [betParams, setBetParams] = useState<BetParams>({});
   const spinning = loading || (result !== null && !revealed);
 
+  function doReveal(body: BetResponse) {
+    setRevealed(true);
+    setCoins((c) => c + body.netDelta);
+    if (body.netDelta > 0) {
+      const big = body.payout >= stake * 5;
+      confetti({
+        particleCount: big ? 160 : 70,
+        spread: big ? 100 : 70,
+        startVelocity: big ? 55 : 35,
+        origin: { y: 0.55 },
+        colors: ["#f59e0b", "#fde68a", "#dc2626", "#10b981"],
+      });
+    }
+  }
+
+  // Golden Ticket has no fixed reveal delay — it waits for the player to actually pick a
+  // ticket (see the onRevealed callback below) instead of a timer forcing the outcome on them.
+  const manualReveal = MANUAL_REVEAL_GAMES.has(gameKey);
+
   async function play() {
     if (revealTimer.current) clearTimeout(revealTimer.current);
     setRevealed(false);
@@ -88,22 +116,10 @@ export function GamePlayer({
     setLoading(false);
     if (!res.ok) { setError(body.error ?? "Bet failed"); return; }
     setResult(body);
+    if (manualReveal) return;
 
-    const delay = REVEAL_DELAY_MS[category] ?? 1500;
-    revealTimer.current = setTimeout(() => {
-      setRevealed(true);
-      setCoins((c) => c + body.netDelta);
-      if (body.netDelta > 0) {
-        const big = body.payout >= stake * 5;
-        confetti({
-          particleCount: big ? 160 : 70,
-          spread: big ? 100 : 70,
-          startVelocity: big ? 55 : 35,
-          origin: { y: 0.55 },
-          colors: ["#f59e0b", "#fde68a", "#dc2626", "#10b981"],
-        });
-      }
-    }, delay);
+    const delay = GAME_REVEAL_DELAY_MS[gameKey] ?? REVEAL_DELAY_MS[category] ?? 1500;
+    revealTimer.current = setTimeout(() => doReveal(body), delay);
   }
 
   useEffect(() => () => { if (revealTimer.current) clearTimeout(revealTimer.current); }, []);
@@ -161,9 +177,12 @@ export function GamePlayer({
             </div>
           ) : result ? (
             <div className="relative z-10 flex flex-col items-center gap-6 w-full">
-              <GameResultView category={category} gameKey={gameKey} detail={result.detail} win={result.netDelta > 0} />
+              <GameResultView
+                category={category} gameKey={gameKey} detail={result.detail} win={result.netDelta > 0}
+                onRevealed={manualReveal ? () => doReveal(result) : undefined}
+              />
 
-              {!revealed && (
+              {!revealed && !manualReveal && (
                 <motion.p
                   animate={{ opacity: [0.4, 1, 0.4] }}
                   transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}

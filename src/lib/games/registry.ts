@@ -4,9 +4,9 @@ import type { GameDef, GameResult } from "./types";
 
 // Every game targets a realistic ~96% long-run RTP (4% house edge), with fixed-odds bets
 // (coinflip, roulette colors) landing close to a 48% win chance per bet — a real-casino feel
-// rather than a rigged one. Where a formula makes RTP independent of bet params (rollUnder,
-// crash), the constant bakes the split in directly; everywhere else, multiplier tables are
-// scaled to hit ~96%.
+// rather than a rigged one. Where a formula makes RTP independent of bet params (rollUnder),
+// the constant bakes the split in directly; everywhere else, multiplier tables are scaled to
+// hit ~96%.
 export const RTP_TARGET = 0.96;
 
 // dice/limbo share rollUnder(), which divides by targetBp — 0 breaks the formula (division by
@@ -25,29 +25,16 @@ function invalidTargetBp(targetBp: unknown): string | null {
   return null;
 }
 
-// Dice Roll's own, stricter ceiling — 80% win chance (not the shared 95% MAX_TARGET_BP, which
-// Limbo also relies on for its low-target end) so the lowest possible payout is 0.96/0.8 = 1.2x,
-// never the near-breakeven ~1.01x a 95% win chance produced.
-const DICE_MAX_TARGET_BP = 8000;
-function invalidDiceTargetBp(targetBp: unknown): string | null {
-  const err = invalidTargetBp(targetBp);
-  if (err) return err;
-  if (targetBp !== undefined && targetBp !== null && Number(targetBp) > DICE_MAX_TARGET_BP) {
-    return `targetBp must be at most ${DICE_MAX_TARGET_BP} (80% win chance)`;
-  }
-  return null;
-}
-
 const CARD_RANKS = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
 const CARD_SUITS = ["♠","♥","♦","♣"];
-function freshDeck() {
+export function freshDeck() {
   return CARD_RANKS.flatMap((r) => CARD_SUITS.map((s) => `${r}${s}`));
 }
 function rankValue(card: string) {
   const rank = card.slice(0, -1);
   return CARD_RANKS.indexOf(rank);
 }
-function blackjackValue(cards: string[]) {
+export function blackjackValue(cards: string[]) {
   let total = 0, aces = 0;
   for (const c of cards) {
     const r = c.slice(0, -1);
@@ -78,6 +65,49 @@ const SLOT_PAYTABLE_FRUITS: Record<string, number[]> = {
   STAR: [12.5, 41, 206], GRAPE: [4.1, 12.5, 41], WATERMELON: [2.5, 7.4, 25], ORANGE: [1.6, 4.1, 12.5], PLUM: [0.8, 2.5, 6.1],
 };
 
+// Payouts scaled by Monte Carlo simulation (5M spins) against this exact weight table to land
+// on the 0.96 RTP target — re-simulate if the weights or pay values change.
+const SCRATCH_SYMBOLS = [
+  { weight: 30, value: { key: "CHERRY", pay: 1.3 } },
+  { weight: 25, value: { key: "LEMON", pay: 1.9 } },
+  { weight: 20, value: { key: "BELL", pay: 3.2 } },
+  { weight: 15, value: { key: "BAR", pay: 6.4 } },
+  { weight: 10, value: { key: "STAR", pay: 26 } },
+];
+const SCRATCH_LINES = [
+  [0, 1, 2], [3, 4, 5], [6, 7, 8],
+  [0, 3, 6], [1, 4, 7], [2, 5, 8],
+  [0, 4, 8], [2, 4, 6],
+];
+
+const SIC_BO_BETS = new Set(["small", "big", "odd", "even", "any-triple", "triple"]);
+
+// 5x5 bingo card positions (0-24), all 12 winning lines: 5 rows, 5 columns, 2 diagonals.
+const BINGO_LINES = [
+  ...[0, 1, 2, 3, 4].map((r) => [0, 1, 2, 3, 4].map((c) => r * 5 + c)),
+  ...[0, 1, 2, 3, 4].map((c) => [0, 1, 2, 3, 4].map((r) => r * 5 + c)),
+  [0, 6, 12, 18, 24],
+  [4, 8, 12, 16, 20],
+];
+
+// Weighted so each marker's own multiplier lands on 0.96 RTP: mult_i = 0.96 * totalWeight / weight_i.
+const TANK_ZONES = [
+  { weight: 40, value: 0 }, { weight: 30, value: 1 }, { weight: 15, value: 2 },
+  { weight: 10, value: 3 }, { weight: 5, value: 4 },
+];
+const TANK_MULT = [2.4, 3.2, 6.4, 9.6, 19.2];
+
+// Weights/values solved together for ~0.96 EV: (0*61 + 1*25 + 2*9 + 6*4 + 30*1) / 100 = 0.97.
+const GOLDEN_TICKET_PRIZES = [
+  { weight: 61, value: 0 }, { weight: 25, value: 1 }, { weight: 9, value: 2 },
+  { weight: 4, value: 6 }, { weight: 1, value: 30 },
+];
+// The 2x-or-better slice of GOLDEN_TICKET_PRIZES, same relative odds — used to force one decoy
+// into a "real win" tier when a spread would otherwise show nothing above 1x.
+const GOLDEN_TICKET_BIG_PRIZES = [
+  { weight: 9, value: 2 }, { weight: 4, value: 6 }, { weight: 1, value: 30 },
+];
+
 export const GAMES: GameDef[] = [
   {
     key: "slots-classic", name: "Classic 777", category: "slots", minStake: 1, maxStake: 500,
@@ -104,21 +134,6 @@ export const GAMES: GameDef[] = [
       "Fewer than 3 matching symbols: lose your stake",
     ],
     play: (next) => spinSlots(next, SLOT_SYMBOLS_FRUITS, 5, SLOT_PAYTABLE_FRUITS),
-  },
-  {
-    // minStake 5 (not 1) — at a high win-chance the payout multiplier sits just above 1.0x,
-    // and whole-coin rounding on a stake of 1 floors the payout back down to the stake itself
-    // (a "win" that nets 0). A stake of 5 keeps a real margin above that rounding floor.
-    key: "dice", name: "Dice Roll", category: "dice", minStake: 5, maxStake: 1000,
-    description: "Pick a target 1–80%. A number from 0–9999 is rolled — win if it lands under your target. Lower target, higher payout.",
-    rules: [
-      "Pick a win chance from 1% to 80%",
-      "A number 0–9999 is rolled; you win if it lands below your chosen chance",
-      "Payout on a win = 0.96 ÷ (win chance) — e.g. a 48% chance pays exactly 2x, the max 80% chance pays 1.2x",
-      "Miss the roll: lose your stake",
-    ],
-    play: (next, params) => rollUnder(next, Number(params?.targetBp ?? 5000)),
-    validateParams: (params) => invalidDiceTargetBp(params?.targetBp),
   },
   {
     key: "limbo", name: "Limbo", category: "dice", minStake: 1, maxStake: 1000,
@@ -177,11 +192,10 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "roulette", name: "European Roulette", category: "wheel", minStake: 1, maxStake: 1000,
-    description: "37-pocket wheel (0–36). Red/black and single-number bets are both scaled to the platform's fixed payout split.",
+    description: "37-pocket wheel (0–36). Bet red, black, or green — no single-number bets.",
     rules: [
-      "Bet red or black: win if the ball lands on that color (18/37 chance, ~48.6%) — pays 1.97x",
+      "Bet red or black: win if the ball lands on that color (18/37 chance, ~48.6%) — pays 2x",
       "Bet green (0): win only if the ball lands on 0 (1/37 chance) — pays 35.5x",
-      "Bet a single number: win only on an exact match (1/37 chance) — pays 35.5x",
       "Any other result: lose your stake",
     ],
     play: (next, params) => {
@@ -193,14 +207,12 @@ export const GAMES: GameDef[] = [
       if (bet === "red" && isRed) { win = true; payoutMult = 1.97; }
       else if (bet === "black" && number !== 0 && !isRed) { win = true; payoutMult = 1.97; }
       else if (bet === "green" && number === 0) { win = true; payoutMult = 35.5; }
-      else if (/^\d+$/.test(bet) && Number(bet) === number) { win = true; payoutMult = 35.5; }
       return { multiplier: win ? payoutMult : 0, detail: { number, isRed } };
     },
     validateParams: (params) => {
       const bet = String(params?.bet ?? "red");
       if (bet === "red" || bet === "black" || bet === "green") return null;
-      if (/^\d+$/.test(bet) && Number(bet) >= 0 && Number(bet) <= 36) return null;
-      return "bet must be red, black, green, or a number 0–36";
+      return "bet must be red, black, or green";
     },
   },
   {
@@ -229,26 +241,30 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "tower", name: "Tower Climb", category: "board", minStake: 1, maxStake: 500,
-    description: "Choose how many floors to attempt. Each floor has a 75% chance to continue — the multiplier compounds the higher you climb.",
+    description: "Climb an 8-floor tower one tile at a time. Pick the safe tile on each floor — cash out any time, or fall and lose it all.",
     rules: [
-      "Choose how many floors to attempt (1–20)",
-      "Each floor has a 75% chance to survive",
-      "Falling on ANY floor loses your whole stake — no partial credit for floors already cleared",
-      "Clear every chosen floor: payout = 0.96 ÷ 0.75^floors",
+      "Pick a difficulty: each sets how many tiles are on a floor and how many are safe",
+      "Pick one tile per floor — a safe tile lets you climb to the next floor and raises your multiplier",
+      "Cash out any time after your first climb, or keep going for a bigger multiplier",
+      "Pick a bomb tile and you lose your stake, whatever you'd built up",
+      "Multiplier per floor climbed = (tiles per floor ÷ safe tiles)^floors × 0.96",
     ],
+    // This entry's `play` is unused for actual bets — Tower Climb is interactive (pick one tile
+    // per floor, cash out whenever) via /api/games/tower/{start,pick,cashout}, which need the
+    // per-floor bomb layout to persist server-side between requests instead of resolving in one
+    // shot like every other game here. Kept for the min/max stake + rules text the page reads.
     play: (next, params) => {
-      const floors = Math.min(20, Math.max(1, Number(params?.floors ?? 8)));
+      const tilesPerRow = Math.min(4, Math.max(2, Number(params?.tilesPerRow ?? 3)));
+      const safeTiles = Math.min(tilesPerRow - 1, Math.max(1, Number(params?.safeTiles ?? 2)));
+      const floors = Math.min(8, Math.max(1, Number(params?.floors ?? 4)));
       let reached = 0;
       let survivedAll = true;
       for (let i = 0; i < floors; i++) {
-        if (next() < 0.25) { survivedAll = false; break; }
+        if (next() >= safeTiles / tilesPerRow) { survivedAll = false; break; }
         reached++;
       }
-      // Bug fixed: this used to pay out based on floors survived even after a fall (e.g. reach
-      // floor 2 of 5 chosen, then fall, still got paid for 2) — a guaranteed-loss-only game paid
-      // out most of the time. Falling on any floor now loses the whole stake, like Mines.
-      const multiplier = survivedAll ? RTP_TARGET / Math.pow(0.75, floors) : 0;
-      return { multiplier, detail: { reached, floors } };
+      const fairMultiplier = Math.pow(tilesPerRow / safeTiles, floors) * RTP_TARGET;
+      return { multiplier: survivedAll ? fairMultiplier : 0, detail: { reached, floors } };
     },
   },
   {
@@ -320,19 +336,25 @@ export const GAMES: GameDef[] = [
       const [current, nextCard] = deck;
       const cv = rankValue(current), nv = rankValue(nextCard);
       const win = (guess === "higher" && nv > cv) || (guess === "lower" && nv < cv);
-      return { multiplier: win ? 2.04 : 0, detail: { current, nextCard } };
+      return { multiplier: win ? 2.04 : 0, detail: { current, nextCard, guess } };
     },
   },
   {
     key: "blackjack", name: "Blackjack", category: "cards", minStake: 1, maxStake: 500,
-    description: "You and the dealer both draw to 17. Closest to 21 without going over wins — a push refunds your stake.",
+    description: "Real hand-by-hand blackjack. You're dealt 2 cards and choose Hit, Stand, or Double — the dealer plays after you stand.",
     rules: [
-      "You and the dealer each draw cards until reaching 17 or more",
-      "Natural blackjack (21 on your first 2 cards): 2.54x your stake",
-      "Any other win (closer to 21 than the dealer, without busting): 2.03x your stake",
+      "Hit to take another card, Stand to lock in your total and let the dealer play",
+      "Double (first move only): match your stake, take exactly one more card, then stand",
+      "Natural blackjack (21 on your first 2 cards): pays 2.5x your stake",
+      "Any other win (closer to 21 than the dealer, without busting): pays 2x your stake",
       "Push (equal totals): stake refunded, no win or loss",
-      "Bust or dealer wins: lose your stake",
+      "Bust (over 21), or the dealer's total beats yours: lose your stake",
+      "Dealer draws to 17 and stands — same rule the house plays by",
     ],
+    // This entry's `play` is unused for actual bets — Blackjack is interactive (Hit/Stand/Double,
+    // one card at a time) via /api/games/blackjack/{start,hit,stand,double}, which need the hand
+    // to persist server-side between requests instead of resolving in one shot like every other
+    // game here. Kept for the min/max stake + rules text the game page reads.
     play: (next) => {
       const deck = shuffled(next, freshDeck());
       let i = 0;
@@ -402,41 +424,164 @@ export const GAMES: GameDef[] = [
       const flush = new Set(suits).size === 1;
       const straight = ranks.every((r, idx) => idx === 0 || r === ranks[idx - 1] + 1);
       let multiplier = 0;
-      if (straight && flush) multiplier = 144;
-      else if (groups[0] === 4) multiplier = 72;
-      else if (groups[0] === 3 && groups[1] === 2) multiplier = 25.2;
-      else if (flush) multiplier = 18;
-      else if (straight) multiplier = 10.8;
-      else if (groups[0] === 3) multiplier = 8.64;
-      else if (groups[0] === 2 && groups[1] === 2) multiplier = 5.76;
-      else if (groups[0] === 2 && ranks.some((r) => counts[r] === 2 && r >= 9)) multiplier = 2.88;
-      return { multiplier, detail: { hand } };
+      let combo = "No winning hand";
+      if (straight && flush) { multiplier = 144; combo = "Straight flush"; }
+      else if (groups[0] === 4) { multiplier = 72; combo = "Four of a kind"; }
+      else if (groups[0] === 3 && groups[1] === 2) { multiplier = 25.2; combo = "Full house"; }
+      else if (flush) { multiplier = 18; combo = "Flush"; }
+      else if (straight) { multiplier = 10.8; combo = "Straight"; }
+      else if (groups[0] === 3) { multiplier = 8.64; combo = "Three of a kind"; }
+      else if (groups[0] === 2 && groups[1] === 2) { multiplier = 5.76; combo = "Two pair"; }
+      // CARD_RANKS is 0-indexed ("2"=0 ... "9"=7 ... "A"=12), so "9 or better" is index >= 7 —
+      // not literal 9, which would silently require Jacks or better instead.
+      else if (groups[0] === 2 && ranks.some((r) => counts[r] === 2 && r >= 7)) { multiplier = 2.88; combo = "Pair of 9s or better"; }
+      return { multiplier, detail: { hand, combo } };
     },
   },
   {
-    key: "crash", name: "Crash", category: "crash", minStake: 1, maxStake: 1000,
-    description: "The multiplier climbs until it crashes. Your cashout is fixed at 2x — if the crash point lands past it, you win.",
+    key: "sic-bo", name: "Dice Roll", category: "dice", minStake: 1, maxStake: 500,
+    description: "Three dice roll. Pick a bet — Small/Big, Odd/Even, or call a specific triple for a long-shot jackpot.",
     rules: [
-      "The multiplier climbs from 1x until it randomly crashes",
-      "Your cashout target is fixed at 2x",
-      "Crash point lands at or above 2x (20% chance): win 2x your stake",
-      "Crash point lands below 2x: lose your stake",
+      "Small (4-10) or Big (11-17): win 2x — any triple busts both",
+      "Odd or Even total: win 2x — any triple busts both",
+      "Any triple (three of a kind, any number): win 34.5x",
+      "A specific triple you call (e.g. all 4s): win 207x",
+      "Bet condition not met: lose your stake",
     ],
+    // Genuinely random combinatorics (216 outcomes of 3d6), not a hand-tuned probability —
+    // each bet's payout is 0.96 / (its real win chance), so the RTP falls out of the dice math.
     play: (next, params) => {
-      const cashoutAt = Number(params?.cashoutAt ?? 2);
-      const r = next();
-      // Crash-point formula: P(crashPoint >= target) = RTP_TARGET/target, so EV = RTP_TARGET
-      // for any fixed cashout target — the platform's payout split holds regardless of target.
-      const crashPoint = Math.max(1, RTP_TARGET / (1 - r));
-      const win = cashoutAt <= crashPoint;
-      return { multiplier: win ? cashoutAt : 0, detail: { crashPoint: Number(crashPoint.toFixed(2)) } };
+      const bet = SIC_BO_BETS.has(String(params?.bet)) ? String(params?.bet) : "small";
+      const number = Number(params?.number ?? 1);
+      const dice = [randInt(next, 1, 6), randInt(next, 1, 6), randInt(next, 1, 6)];
+      const sum = dice[0] + dice[1] + dice[2];
+      const isTriple = dice[0] === dice[1] && dice[1] === dice[2];
+      let win = false;
+      let multiplier = 0;
+      if (bet === "small") { win = !isTriple && sum >= 4 && sum <= 10; multiplier = 2; }
+      else if (bet === "big") { win = !isTriple && sum >= 11 && sum <= 17; multiplier = 2; }
+      else if (bet === "odd") { win = !isTriple && sum % 2 === 1; multiplier = 2; }
+      else if (bet === "even") { win = !isTriple && sum % 2 === 0; multiplier = 2; }
+      else if (bet === "any-triple") { win = isTriple; multiplier = 34.5; }
+      else if (bet === "triple") { win = isTriple && dice[0] === number; multiplier = 207; }
+      return { multiplier: win ? multiplier : 0, detail: { dice, sum, bet, number: bet === "triple" ? number : undefined, isTriple } };
     },
     validateParams: (params) => {
-      const cashoutAt = Number(params?.cashoutAt ?? 2);
-      if (!Number.isFinite(cashoutAt) || cashoutAt <= 1 || cashoutAt > 1000) {
-        return "cashoutAt must be a number greater than 1 and at most 1000";
+      const bet = String(params?.bet ?? "small");
+      if (params?.bet !== undefined && !SIC_BO_BETS.has(bet)) {
+        return `bet must be one of: ${[...SIC_BO_BETS].join(", ")}`;
+      }
+      if (bet === "triple") {
+        const number = Number(params?.number ?? 1);
+        if (!Number.isInteger(number) || number < 1 || number > 6) return "number must be an integer from 1 to 6";
       }
       return null;
+    },
+  },
+  {
+    key: "scratch-gold", name: "Scratch Gold", category: "board", minStake: 1, maxStake: 500,
+    description: "Reveal a 3x3 grid. Three matching symbols in any row, column, or diagonal pays out — rarer symbols pay more.",
+    rules: [
+      "Three ★ Star in a line: 26x",
+      "Three BAR in a line: 6.4x",
+      "Three 🔔 Bell in a line: 3.2x",
+      "Three 🍋 Lemon in a line: 1.9x",
+      "Three 🍒 Cherry in a line: 1.3x",
+      "No line of 3 matching symbols: lose your stake",
+      "Multiple winning lines: paid at the best one",
+    ],
+    play: (next) => {
+      const cells = Array.from({ length: 9 }, () => weightedPick(next, SCRATCH_SYMBOLS));
+      let multiplier = 0;
+      let winLine: number[] | null = null;
+      for (const line of SCRATCH_LINES) {
+        const [a, b, c] = line;
+        if (cells[a].key === cells[b].key && cells[b].key === cells[c].key && cells[a].pay > multiplier) {
+          multiplier = cells[a].pay;
+          winLine = line;
+        }
+      }
+      return { multiplier, detail: { cells: cells.map((s) => s.key), winLine } };
+    },
+  },
+  {
+    key: "memory-flip", name: "Twin Flip", category: "cards", minStake: 1, maxStake: 500,
+    description: "8 cards face down, 4 hidden pairs. Pick 2 cards in the game itself — match them and win.",
+    rules: [
+      "Pick any 2 of the 8 face-down cards to flip",
+      "Your 2 cards turn out to be a matching pair (1-in-7 chance): win 6.72x",
+      "No match: lose your stake",
+    ],
+    // Which 2 of the 8 cards you flip is chosen in the game itself, after the bet has already
+    // resolved (like Golden Ticket) — so the server only needs to decide win/lose here, matching
+    // the same 1-in-7 odds a real 2-of-8 pair pick has. The board's actual pair layout is built
+    // client-side once you've picked, arranging itself around your 2 picks.
+    play: (next) => {
+      const matched = next() < 1 / 7;
+      return { multiplier: matched ? 6.72 : 0, detail: { matched } };
+    },
+  },
+  {
+    key: "bingo", name: "Bingo", category: "board", minStake: 1, maxStake: 500,
+    description: "A 5x5 card, 13 of its 25 numbers get called. Complete any row, column, or diagonal to win.",
+    rules: [
+      "13 of the 25 numbers on your card are called",
+      "Any complete row, column, or diagonal of called numbers: win 3.52x",
+      "No completed line: lose your stake",
+    ],
+    play: (next) => {
+      const cardPositions = shuffled(next, Array.from({ length: 25 }, (_, i) => i));
+      const called = new Set(cardPositions.slice(0, 13));
+      const winLine = BINGO_LINES.find((line) => line.every((p) => called.has(p))) ?? null;
+      return { multiplier: winLine ? 3.52 : 0, detail: { called: [...called], winLine } };
+    },
+  },
+  {
+    key: "tank-shot", name: "Tank Shot", category: "dice", minStake: 1, maxStake: 500,
+    description: "Aim your tank at one of 5 distance markers and fire. Land there and win — farther markers pay much more.",
+    rules: [
+      "Marker 1 (closest, most likely): win 2.4x",
+      "Marker 2: win 3.2x",
+      "Marker 3: win 6.4x",
+      "Marker 4: win 9.6x",
+      "Marker 5 (farthest, longest shot): win 19.2x",
+      "The shell lands on a different marker: lose your stake",
+    ],
+    play: (next, params) => {
+      const target = Math.min(4, Math.max(0, Number(params?.target ?? 0)));
+      const landed = weightedPick(next, TANK_ZONES);
+      const win = landed === target;
+      return { multiplier: win ? TANK_MULT[target] : 0, detail: { landed, target } };
+    },
+    validateParams: (params) => {
+      const t = Number(params?.target ?? 0);
+      if (!Number.isInteger(t) || t < 0 || t > 4) return "target must be an integer 0-4";
+      return null;
+    },
+  },
+  {
+    key: "golden-ticket", name: "Golden Ticket", category: "board", minStake: 1, maxStake: 500,
+    description: "5 tickets, face down — you pick which one to open. Whatever prize is underneath is your payout.",
+    rules: [
+      "1x: common small win",
+      "2x: a solid win",
+      "6x: a rare bigger win",
+      "30x: the jackpot ticket",
+      "Blank ticket: lose your stake",
+      "Only your chosen ticket pays — the other 4 shown afterward are for curiosity, not extra winnings",
+    ],
+    play: (next) => {
+      const prize = weightedPick(next, GOLDEN_TICKET_PRIZES);
+      // 4 cosmetic tickets shown alongside the real one once you've picked, so you can see what
+      // the other 4 would have held — decorative only, they never change your payout.
+      const decoys = Array.from({ length: 4 }, () => weightedPick(next, GOLDEN_TICKET_PRIZES));
+      // Every spread shows at least one 2x-or-better ticket somewhere among the 5 — if the real
+      // draws didn't happen to land one, force a random decoy slot to a big cosmetic prize so the
+      // pile never reads as a total dud before you've even picked.
+      if (prize < 2 && decoys.every((d) => d < 2)) {
+        decoys[randInt(next, 0, decoys.length - 1)] = weightedPick(next, GOLDEN_TICKET_BIG_PRIZES);
+      }
+      return { multiplier: prize, detail: { prize, decoys } };
     },
   },
 ];

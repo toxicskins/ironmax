@@ -252,15 +252,6 @@ export function IconKenoGrid({ className }: IconProps) {
   );
 }
 
-export function IconCrashChart({ className }: IconProps) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} fill="none">
-      <path d="M6 38 Q 24 38, 40 10" stroke="#f87171" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <path d="M34 10h6v6" stroke="#f87171" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function IconCoinFace({ className, label }: IconProps & { label: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="none">

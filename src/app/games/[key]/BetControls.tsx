@@ -10,13 +10,15 @@ export type BetParams = Record<string, unknown>;
  * choice (and the live win-chance/multiplier it implies) for every param the backend reads.
  */
 export function BetControls({ gameKey, onChange }: { gameKey: string; onChange: (params: BetParams) => void }) {
-  if (gameKey === "dice") return <DiceControls onChange={onChange} />;
   if (gameKey === "limbo") return <LimboControls onChange={onChange} />;
   if (gameKey === "coinflip") return <CoinflipControls onChange={onChange} />;
   if (gameKey === "roulette") return <RouletteControls onChange={onChange} />;
   if (gameKey === "mines") return <MinesControls onChange={onChange} />;
   if (gameKey === "tower") return <TowerControls onChange={onChange} />;
   if (gameKey === "keno") return <KenoControls onChange={onChange} />;
+  if (gameKey === "sic-bo") return <SicBoControls onChange={onChange} />;
+  if (gameKey === "hilo") return <HiLoControls onChange={onChange} />;
+  if (gameKey === "tank-shot") return <TankShotControls onChange={onChange} />;
   return null;
 }
 
@@ -26,31 +28,6 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <span className="text-xs text-zinc-500 w-24 shrink-0">{label}</span>
       {children}
     </div>
-  );
-}
-
-function DiceControls({ onChange }: { onChange: (p: BetParams) => void }) {
-  const [winChancePct, setWinChancePct] = useState(50);
-  const targetBp = Math.round(winChancePct * 100);
-  const payout = (0.96 / (winChancePct / 100)).toFixed(2);
-
-  function update(v: number) {
-    setWinChancePct(v);
-    onChange({ targetBp: Math.round(v * 100) });
-  }
-
-  // Emit the default on mount too — without this, leaving the slider untouched and pressing
-  // Play sent no targetBp at all, which the server's validator rejected outright instead of
-  // treating as "use the default" (see registry.ts's invalidTargetBp for the other half of the fix).
-  useEffect(() => { onChange({ targetBp }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <Row label="Win chance">
-      <input type="range" min={1} max={80} value={winChancePct} onChange={(e) => update(Number(e.target.value))} className="flex-1 min-w-[120px]" />
-      <span className="text-sm font-semibold text-amber-400 w-14">{winChancePct}%</span>
-      <span className="text-xs text-zinc-500">pays {payout}x</span>
-      <input type="hidden" value={targetBp} readOnly />
-    </Row>
   );
 }
 
@@ -103,6 +80,22 @@ function CoinflipControls({ onChange }: { onChange: (p: BetParams) => void }) {
   );
 }
 
+function HiLoControls({ onChange }: { onChange: (p: BetParams) => void }) {
+  const [guess, setGuess] = useState<"higher" | "lower">("higher");
+  function pick(v: "higher" | "lower") { setGuess(v); onChange({ guess: v }); }
+  useEffect(() => { onChange({ guess }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Row label="Next card is">
+      {(["higher", "lower"] as const).map((v) => (
+        <button key={v} onClick={() => pick(v)}
+          className={`px-3 py-1.5 rounded-md text-sm font-semibold capitalize ${guess === v ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
+          {v} (2.04x)
+        </button>
+      ))}
+    </Row>
+  );
+}
+
 function RouletteControls({ onChange }: { onChange: (p: BetParams) => void }) {
   const [bet, setBet] = useState("red");
   function pick(v: string) { setBet(v); onChange({ bet: v }); }
@@ -115,9 +108,6 @@ function RouletteControls({ onChange }: { onChange: (p: BetParams) => void }) {
           {l}
         </button>
       ))}
-      <input type="number" min={0} max={36} placeholder="or a number"
-        onChange={(e) => { const v = e.target.value; if (v !== "") pick(v); }}
-        className="w-28 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm" />
     </Row>
   );
 }
@@ -161,6 +151,44 @@ function TowerControls({ onChange }: { onChange: (p: BetParams) => void }) {
   );
 }
 
+const SIC_BO_BET_LABELS: Record<string, string> = {
+  small: "Small (4-10) — 2x", big: "Big (11-17) — 2x",
+  odd: "Odd — 2x", even: "Even — 2x",
+  "any-triple": "Any triple — 34.5x", triple: "Specific triple — 207x",
+};
+
+function SicBoControls({ onChange }: { onChange: (p: BetParams) => void }) {
+  const [bet, setBet] = useState("small");
+  const [number, setNumber] = useState(1);
+  function pick(v: string) { setBet(v); onChange(v === "triple" ? { bet: v, number } : { bet: v }); }
+  function pickNumber(n: number) { setNumber(n); onChange({ bet: "triple", number: n }); }
+  useEffect(() => { onChange({ bet }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="flex flex-col gap-2">
+      <Row label="Bet on">
+        <div className="flex flex-wrap gap-1.5">
+          {Object.keys(SIC_BO_BET_LABELS).map((v) => (
+            <button key={v} onClick={() => pick(v)}
+              className={`px-3 py-1.5 rounded-md text-sm font-semibold ${bet === v ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
+              {SIC_BO_BET_LABELS[v]}
+            </button>
+          ))}
+        </div>
+      </Row>
+      {bet === "triple" && (
+        <Row label="Triple of">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <button key={n} onClick={() => pickNumber(n)}
+              className={`w-8 h-8 rounded text-sm font-semibold ${number === n ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}>
+              {n}
+            </button>
+          ))}
+        </Row>
+      )}
+    </div>
+  );
+}
+
 function KenoControls({ onChange }: { onChange: (p: BetParams) => void }) {
   const [picks, setPicks] = useState<number[]>([1, 2, 3, 4, 5, 6]);
   function toggle(n: number) {
@@ -184,5 +212,22 @@ function KenoControls({ onChange }: { onChange: (p: BetParams) => void }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function TankShotControls({ onChange }: { onChange: (p: BetParams) => void }) {
+  const [target, setTarget] = useState(0);
+  function pick(t: number) { setTarget(t); onChange({ target: t }); }
+  useEffect(() => { onChange({ target }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const mults = [2.4, 3.2, 6.4, 9.6, 19.2];
+  return (
+    <Row label="Aim at">
+      {mults.map((m, i) => (
+        <button key={i} onClick={() => pick(i)}
+          className={`px-3 py-1.5 rounded-md text-sm font-semibold ${target === i ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
+          Marker {i + 1} ({m}x)
+        </button>
+      ))}
+    </Row>
   );
 }

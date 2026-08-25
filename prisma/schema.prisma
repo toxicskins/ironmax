@@ -41,6 +41,8 @@ model User {
   invoices     Invoice[]
   resetTokens  PasswordResetToken[]
   minesRounds  MinesRound[]
+  blackjackRounds BlackjackRound[]
+  towerRounds  TowerRound[]
 }
 
 model Wallet {
@@ -150,4 +152,44 @@ model MinesRound {
   clientSeed String
   nonce      BigInt
   createdAt  DateTime @default(now())
+}
+
+// A live blackjack hand: the shuffled deck is generated once at start and kept server-side
+// (only drawn cards are ever sent to the client) so Hit/Stand/Double can be separate requests
+// without the client being able to read ahead in the deck.
+model BlackjackRound {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  stake       Int
+  deck        String // JSON string[52], shuffled once at start — never sent to the client
+  drawIndex   Int      @default(4) // next undealt index into `deck`; 4 cards already dealt at start
+  playerCards String // JSON string[]
+  dealerCards String // JSON string[]
+  doubled     Boolean  @default(false)
+  status      String   @default("active") // active | finished
+  serverSeed  String
+  clientSeed  String
+  nonce       BigInt
+  createdAt   DateTime @default(now())
+}
+
+// A live Tower Climb run: one bomb layout per floor is generated once at start and kept
+// server-side (never sent to the client) so a player can pick one tile per floor and cash out
+// whenever they choose, exactly like Mines but row-by-row instead of one flat grid.
+model TowerRound {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  stake       Int
+  tilesPerRow Int
+  safeTiles   Int // how many of tilesPerRow are safe, per floor
+  rows        Int      @default(8)
+  layout      String // JSON number[rows][safeTiles] — the safe tile index(es) per floor
+  climbed     String   @default("[]") // JSON number[] tile index picked per floor climbed so far
+  status      String   @default("active") // active | busted | cashed
+  serverSeed  String
+  clientSeed  String
+  nonce       BigInt
+  createdAt   DateTime @default(now())
 }

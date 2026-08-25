@@ -16,7 +16,7 @@ export default function GamesPage() {
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">
           {GAMES.length} games. <span className="text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.7)]">One lobby.</span>
         </h1>
-        <p className="text-zinc-400 mt-2 max-w-xl">Slots, table games, and crash — filter by category or search below.</p>
+        <p className="text-zinc-400 mt-2 max-w-xl">Slots, table games, and wheels — filter by category or search below.</p>
       </div>
       <GameGrid games={games} />
     </div>

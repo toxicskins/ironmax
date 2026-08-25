@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { GamePlayer } from "./GamePlayer";
 import { MinesInteractive } from "./MinesInteractive";
+import { BlackjackInteractive } from "./BlackjackInteractive";
+import { TowerInteractive } from "./TowerInteractive";
 import { FloatingOrbs } from "../../FloatingOrbs";
 
 export default async function GamePage({ params }: { params: Promise<{ key: string }> }) {
@@ -31,6 +33,18 @@ export default async function GamePage({ params }: { params: Promise<{ key: stri
       </div>
       {game.key === "mines" ? (
         <MinesInteractive
+          minStake={game.minStake}
+          maxStake={game.maxStake}
+          initialCoins={wallet?.coins ?? null}
+        />
+      ) : game.key === "blackjack" ? (
+        <BlackjackInteractive
+          minStake={game.minStake}
+          maxStake={game.maxStake}
+          initialCoins={wallet?.coins ?? null}
+        />
+      ) : game.key === "tower" ? (
+        <TowerInteractive
           minStake={game.minStake}
           maxStake={game.maxStake}
           initialCoins={wallet?.coins ?? null}

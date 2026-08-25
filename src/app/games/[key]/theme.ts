@@ -43,13 +43,6 @@ export const STAGE_THEME: Record<string, StageTheme> = {
     accent: "emerald-600",
     hoverBorder: "hover:border-emerald-600 hover:shadow-[0_0_24px_-4px_rgba(16,185,129,0.5)]",
   },
-  crash: {
-    glow: "rgba(239,68,68,0.4)",
-    radial: "radial-gradient(ellipse 90% 60% at 50% 10%, rgba(239,68,68,0.2) 0%, transparent 60%), radial-gradient(ellipse at center, #3a1410 0%, #0a0a0c 72%)",
-    border: "border-red-500/25",
-    accent: "red-500",
-    hoverBorder: "hover:border-red-500 hover:shadow-[0_0_24px_-4px_rgba(239,68,68,0.6)]",
-  },
 };
 
 export function themeFor(category: string): StageTheme {
