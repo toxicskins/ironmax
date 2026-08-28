@@ -148,7 +148,7 @@ export function TowerInteractive({ minStake, maxStake, initialCoins }: {
             <p className="text-sm text-zinc-500 relative z-10">Choose a difficulty and stake, then press Start</p>
           ) : (
             <>
-              <div className="flex flex-col gap-1.5 relative z-10 w-full max-w-xs">
+              <div className="flex flex-col gap-1.5 relative z-10 w-full">
                 {floorOrder.map((floor) => {
                   const isCurrent = phase === "active" && floor === climbed.length;
                   const isCleared = floor < climbed.length;
@@ -157,7 +157,7 @@ export function TowerInteractive({ minStake, maxStake, initialCoins }: {
                   return (
                     <div
                       key={floor}
-                      className={`flex gap-1.5 justify-center transition-opacity duration-300 ${rowDimmed ? "opacity-35" : "opacity-100"}`}
+                      className={`flex gap-1.5 transition-opacity duration-300 ${rowDimmed ? "opacity-35" : "opacity-100"}`}
                     >
                       {Array.from({ length: difficulty.tilesPerRow }, (_, tileIndex) => {
                         const pickedHere = isCleared && climbed[floor] === tileIndex;
@@ -171,7 +171,7 @@ export function TowerInteractive({ minStake, maxStake, initialCoins }: {
                             onClick={() => pick(floor, tileIndex)}
                             whileTap={isCurrent ? { scale: 0.92 } : undefined}
                             animate={bustedHere ? { rotate: [0, -6, 6, 0] } : {}}
-                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center p-2 transition-colors ${
+                            className={`flex-1 aspect-square rounded-lg flex items-center justify-center p-2 transition-colors ${
                               bustedHere
                                 ? "bg-red-700"
                                 : pickedHere

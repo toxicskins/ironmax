@@ -26,9 +26,15 @@ const REVEAL_DELAY_MS: Record<string, number> = {
 // of the "board" category's near-instant reveals, so it needs its own longer wait here too.
 const GAME_REVEAL_DELAY_MS: Record<string, number> = {
   bingo: 4200,
+  // The ball's bounce animation itself runs 2.4s (see PlinkoBoard) plus its bucket-highlight
+  // spring settle — longer than the rest of "board"'s near-instant reveals.
+  plinko: 3200,
+  // A real hand can draw a 3rd card on either side now, pushing the card-land -> tally ->
+  // compare sequence past the rest of "cards"' 2-card-hand timing.
+  baccarat: 2000,
 };
 
-const GAMES_WITH_CONTROLS = new Set(["limbo", "coinflip", "roulette", "mines", "tower", "keno", "sic-bo", "hilo", "tank-shot"]);
+const GAMES_WITH_CONTROLS = new Set(["limbo", "coinflip", "roulette", "mines", "tower", "keno", "sic-bo", "tank-shot"]);
 
 // These games reveal on the player's own action inside the stage (picking a card/ticket) instead
 // of a fixed timer — see the `manualReveal` usage below.

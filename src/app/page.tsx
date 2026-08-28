@@ -12,18 +12,18 @@ const TICKER_ITEMS = GAMES.map((g) => g.name);
 const STEPS = [
   { n: "1", icon: "🪪", title: "Sign up", body: "Create a free account in seconds — no card needed to sign up." },
   { n: "2", icon: "💳", title: "Top up", body: "100 points = €1. Add points whenever you want to play." },
-  { n: "3", icon: "🎮", title: "Play & chase the win", body: "16 games, provably-fair outcomes, instant results." },
+  { n: "3", icon: "🎮", title: "Play & chase the win", body: `${GAMES.length} games, provably-fair outcomes, instant results.` },
 ];
 
 const TRUST = [
-  { icon: "🎰", title: "16 games", body: "Slots, table games, wheels — one lobby." },
+  { icon: "🎰", title: `${GAMES.length} games`, body: "Slots, table games, wheels — one lobby." },
   { icon: "🔒", title: "Provably fair", body: "Every bet is seed-verifiable, no black box." },
   { icon: "⚡", title: "Instant results", body: "No waiting, no withdrawal delays — it's just for fun." },
   { icon: "📋", title: "Clear paytables", body: "Every game shows its exact rules and payouts up front." },
 ];
 
 const HERO_STATS = [
-  { value: "16", label: "games" },
+  { value: String(GAMES.length), label: "games" },
   { value: "96%", label: "avg. RTP" },
   { value: "24/7", label: "instant play" },
 ];
@@ -122,7 +122,7 @@ export default async function Home() {
           Popular <span className="text-amber-400">right now</span>
         </h2>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
           {popular.map((g) => <GameTile key={g.key} g={g} />)}
         </div>
 
@@ -139,7 +139,7 @@ export default async function Home() {
           New <span className="text-amber-400">games</span>
         </h2>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
           {newGames.map((g) => <GameTile key={g.key} g={g} />)}
         </div>
       </section>

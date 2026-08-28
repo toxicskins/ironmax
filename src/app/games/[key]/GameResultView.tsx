@@ -5,12 +5,16 @@ import * as deck from "@letele/playing-cards";
 import {
   IconSeven, IconBar, IconBell, IconCherry, IconLemon, IconGrape,
   IconWatermelon, IconOrange, IconPlum, IconStar, IconMine, IconGem, IconCoinFace,
-  IconEagle, IconLaurelStar,
+  IconEagle, IconLaurelStar, IconClover, IconCrown, IconDiamondBadge,
 } from "./icons";
 
 const SYMBOL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   "7": IconSeven, BAR: IconBar, BELL: IconBell, CHERRY: IconCherry, LEMON: IconLemon,
   GRAPE: IconGrape, WATERMELON: IconWatermelon, ORANGE: IconOrange, PLUM: IconPlum, STAR: IconStar,
+  // Scratch Gold's poster-matched symbol set — CHERRY/BAR/SEVEN above are shared with the slots,
+  // these are the extra ones unique to its 9-symbol paytable.
+  CLOVER: IconClover, CHERRIES: IconCherry, GOLDBAR: IconBar,
+  SEVEN: IconSeven, CROWN: IconCrown, DIAMOND: IconDiamondBadge,
 };
 
 // Memory Flip's 4 pair labels (A-D, from the server) mapped to distinct icons for display —
@@ -158,7 +162,7 @@ function GoldenTicketPile({ prize, decoys, resultKey, onRevealed }: {
   }
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-3 w-full">
       <motion.p
         initial={{ opacity: 1 }}
         animate={{ opacity: chosen === null ? 1 : 0 }}
@@ -166,13 +170,13 @@ function GoldenTicketPile({ prize, decoys, resultKey, onRevealed }: {
       >
         Pick a ticket to scratch
       </motion.p>
-      <div className="flex gap-2 sm:gap-3">
+      <div className="grid grid-cols-5 gap-2 sm:gap-3 w-full">
         {Array.from({ length: GOLDEN_TICKET_COUNT }, (_, i) => {
           const isChosen = chosen === i;
           const value = arr ? arr[i] : 0;
           const won = value > 0;
           return (
-            <div key={i} className="relative w-16 h-24 sm:w-20 sm:h-28" style={{ perspective: 600 }}>
+            <div key={i} className="relative w-full aspect-[2/3]" style={{ perspective: 600 }}>
               <motion.button
                 type="button"
                 disabled={chosen !== null}
@@ -280,7 +284,7 @@ function TwinFlipBoard({ matched, resultKey, onRevealed }: {
   }
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-3 w-full">
       <motion.p
         initial={{ opacity: 1 }}
         animate={{ opacity: labels ? 0 : 1 }}
@@ -288,7 +292,7 @@ function TwinFlipBoard({ matched, resultKey, onRevealed }: {
       >
         Pick 2 cards to flip ({picks.length}/2)
       </motion.p>
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-fit mx-auto" style={{ perspective: 600 }}>
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full" style={{ perspective: 600 }}>
         {Array.from({ length: 8 }, (_, i) => {
           const isPicked = picks.includes(i);
           const Icon = labels ? MEMORY_PAIR_ICON[labels[i]] : undefined;
@@ -298,7 +302,7 @@ function TwinFlipBoard({ matched, resultKey, onRevealed }: {
               type="button"
               disabled={picks.length >= 2}
               onClick={() => pick(i)}
-              className="relative w-16 h-16 sm:w-20 sm:h-20"
+              className="relative w-full aspect-square"
               style={{ perspective: 600, cursor: picks.length < 2 ? "pointer" : "default" }}
               whileHover={picks.length < 2 ? { y: -3 } : undefined}
               whileTap={picks.length < 2 ? { scale: 0.95 } : undefined}
@@ -562,9 +566,9 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
   }, [resultKey]);
 
   return (
-    <div className="w-full max-w-md flex flex-col items-center gap-3">
+    <div className="w-full flex flex-col items-center gap-3">
       <motion.div
-        className="relative w-full h-64 rounded-xl overflow-hidden border border-indigo-500/20"
+        className="relative w-full h-80 sm:h-[28rem] rounded-xl overflow-hidden border border-indigo-500/20"
         style={{ background: "radial-gradient(ellipse 90% 60% at 50% 100%, rgba(99,102,241,0.15) 0%, transparent 70%), linear-gradient(180deg, #0a0a14 0%, #050508 100%)" }}
         animate={!cleared && exploded ? { x: [0, -6, 6, -4, 4, 0] } : {}}
         transition={{ duration: 0.4 }}
@@ -704,7 +708,10 @@ function LimboLaunch({ targetMult, rolledMult, cleared, resultKey }: {
         <span className={`text-4xl font-extrabold tabular-nums ${cleared ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.6)]" : "text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.5)]"}`}>
           {cleared ? `paid ${targetMult.toFixed(2)}x` : "missed"}
         </span>
-        <span className="text-xs text-zinc-500 mt-1">roll reached {rolledMult.toFixed(2)}x</span>
+        {/* Floored, not rounded — a miss that rolled 1.0996x must never display as "1.10x", the
+            exact target it lost to. Rounding up made a real loss look like it hit the target
+            and lost anyway, which read as a bug even though the win check itself was correct. */}
+        <span className="text-xs text-zinc-500 mt-1">roll reached {(Math.floor(rolledMult * 100) / 100).toFixed(2)}x</span>
       </motion.div>
       <div className="w-full text-sm text-zinc-500 flex justify-between">
         <span>your target (min to win): <span className="text-zinc-300 font-semibold">{targetMult.toFixed(2)}x</span></span>
@@ -721,16 +728,6 @@ const PLINKO_PAYOUTS = [0.354, 0.72, 0.96, 1.68, 3.6, 8.9, 43.2];
 function PlinkoBoard({ bucket, rows, resultKey }: { bucket: number; rows: number; resultKey: string }) {
   const bucketCount = rows + 1;
   const finalX = (bucket / rows) * 100;
-  const steps = 8;
-  const xKeyframes = Array.from({ length: steps + 1 }, (_, i) => {
-    const t = i / steps;
-    const amplitude = 26 * (1 - t);
-    const wobble = i % 2 === 0 ? 1 : -1;
-    return 50 * (1 - t) + finalX * t + amplitude * wobble * (1 - t);
-  });
-  xKeyframes[steps] = finalX;
-  const yKeyframes = Array.from({ length: steps + 1 }, (_, i) => (i / steps) * 88 + 4);
-
   const mid = rows / 2;
   // Peg board is a triangle (3 pegs at the top row, widening by one every row) like a real
   // Plinko/Galton board — a uniform block of dots made every row look equally reachable,
@@ -738,33 +735,98 @@ function PlinkoBoard({ bucket, rows, resultKey }: { bucket: number; rows: number
   const pegRows = Math.min(rows, 10);
   const firstRowPegs = 3;
 
+  function pegRowLayout(r: number) {
+    const count = firstRowPegs + r;
+    const widthFrac = 0.28 + 0.72 * (pegRows > 1 ? r / (pegRows - 1) : 1);
+    const top = 6 + (pegRows > 1 ? (r / (pegRows - 1)) * 82 : 0);
+    const xs = Array.from({ length: count }, (_, c) => {
+      const frac = count > 1 ? c / (count - 1) - 0.5 : 0;
+      return 50 + frac * widthFrac * 100;
+    });
+    return { count, top, xs };
+  }
+
+  // One bounce per drawn peg row (instead of a fixed step count unrelated to the visible
+  // pegs) — and each bounce's x lands on the ACTUAL peg closest to the smooth path, so the
+  // ball visibly bounces off a real dot on the board instead of empty space near it.
+  const steps = pegRows;
+  const { xKeyframes, yKeyframes, segTimes, pegHits } = useMemo(() => {
+    const xs: number[] = [50];
+    const ys: number[] = [2];
+    const times: number[] = [0];
+    const hits: { r: number; c: number }[] = [];
+    for (let i = 0; i < steps; i++) {
+      const t = (i + 1) / steps;
+      const amplitude = 22 * (1 - t);
+      const wobble = i % 2 === 0 ? 1 : -1;
+      const smoothX = 50 * (1 - t) + finalX * t + amplitude * wobble * (1 - t);
+      const { top, xs: rowXs } = pegRowLayout(i);
+      let col = 0;
+      for (let c = 1; c < rowXs.length; c++) {
+        if (Math.abs(rowXs[c] - smoothX) < Math.abs(rowXs[col] - smoothX)) col = c;
+      }
+      // The very last row's landing x is forced to the real bucket position, not the nearest
+      // peg — it has to line up with the bucket strip below, which pegs don't guarantee.
+      const landX = i === steps - 1 ? finalX : rowXs[col];
+      hits.push({ r: i, c: col });
+
+      const x0 = xs[xs.length - 1], y0 = ys[ys.length - 1];
+      const bounceHeight = 7 * Math.pow(0.78, i);
+      xs.push((x0 + landX) / 2, landX);
+      ys.push(Math.max(0, Math.min(y0, top) - bounceHeight), top);
+      const segStart = i / steps, segEnd = (i + 1) / steps;
+      times.push(segStart + (segEnd - segStart) * 0.4, segEnd);
+    }
+    return { xKeyframes: xs, yKeyframes: ys, segTimes: times, pegHits: hits };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultKey]);
+
+  const bounceEase = Array.from({ length: xKeyframes.length - 1 }, (_, i) => (i % 2 === 0 ? "easeOut" : "easeIn"));
+  // The ball tumbles as it travels — a subtle spin sells the rolling-off-each-peg feel instead
+  // of looking like it's just being teleported along the zigzag.
+  const rotateKeyframes = xKeyframes.map((x, i) => (i === 0 ? 0 : (x > xKeyframes[i - 1] ? 1 : -1) * i * 45));
+  const duration = 2.4;
+
   // Only reveal which bucket actually won once the ball's fall animation has actually
   // finished — highlighting the landing bucket from the first frame (before the ball even
   // started dropping) spoiled the outcome and looked like the ball couldn't reach it.
   const [landed, setLanded] = useState(false);
-  useEffect(() => { setLanded(false); }, [resultKey]);
+  // Which peg is glowing right now — lit exactly when the ball's fall animation reaches that
+  // row, not a moment before, so the glow reads as "this is the dot it just hit."
+  const [activePeg, setActivePeg] = useState<string | null>(null);
+  useEffect(() => {
+    setLanded(false);
+    setActivePeg(null);
+    const timers = pegHits.map((hit, i) => {
+      const landingTime = segTimes[2 + i * 2] * duration * 1000;
+      const t1 = setTimeout(() => setActivePeg(`${hit.r}-${hit.c}`), landingTime);
+      const t2 = setTimeout(() => setActivePeg((cur) => (cur === `${hit.r}-${hit.c}` ? null : cur)), landingTime + 220);
+      return [t1, t2];
+    }).flat();
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultKey]);
 
   return (
-    <div className="flex flex-col items-center gap-3 w-full max-w-md">
+    <div className="flex flex-col items-center gap-3 w-full">
       <div className="relative w-full h-56 rounded-xl bg-black/30 border border-emerald-500/20 overflow-hidden">
         {Array.from({ length: pegRows }, (_, r) => {
-          const count = firstRowPegs + r;
-          // How much of the board's width this row's pegs spread across — narrow near the
-          // top, reaching (almost) the full 0–100% by the bottom row so the peg field actually
-          // covers the same coordinate space the ball travels and the bucket row below spans,
-          // instead of a fixed-width block that left the edge buckets outside the peg field.
-          const widthFrac = 0.28 + 0.72 * (pegRows > 1 ? r / (pegRows - 1) : 1);
-          const top = 6 + (pegRows > 1 ? (r / (pegRows - 1)) * 82 : 0);
+          const { top, xs } = pegRowLayout(r);
           return (
             <div key={r} className="absolute left-0 right-0" style={{ top: `${top}%` }}>
-              {Array.from({ length: count }, (_, c) => {
-                const frac = count > 1 ? c / (count - 1) - 0.5 : 0;
-                const left = 50 + frac * widthFrac * 100;
+              {xs.map((left, c) => {
+                const isActive = activePeg === `${r}-${c}`;
                 return (
-                  <span
+                  <motion.span
                     key={c}
-                    className="absolute w-1.5 h-1.5 rounded-full bg-zinc-600 -translate-x-1/2 -translate-y-1/2"
+                    className="absolute rounded-full -translate-x-1/2 -translate-y-1/2"
                     style={{ left: `${left}%` }}
+                    animate={
+                      isActive
+                        ? { width: 10, height: 10, backgroundColor: "#fbbf24", boxShadow: "0 0 10px 3px rgba(245,158,11,0.9)" }
+                        : { width: 6, height: 6, backgroundColor: "#52525b", boxShadow: "0 0 0px 0px rgba(245,158,11,0)" }
+                    }
+                    transition={{ duration: 0.15 }}
                   />
                 );
               })}
@@ -775,9 +837,19 @@ function PlinkoBoard({ bucket, rows, resultKey }: { bucket: number; rows: number
           key={resultKey}
           className="absolute w-4 h-4 rounded-full bg-amber-400 shadow-[0_0_14px_rgba(245,158,11,0.9)]"
           style={{ left: 0, top: 0, marginLeft: -8, marginTop: -8 }}
-          initial={{ left: "50%", top: "4%" }}
-          animate={{ left: xKeyframes.map((x) => `${x}%`), top: yKeyframes.map((y) => `${y}%`) }}
-          transition={{ duration: 1.6, ease: "easeIn", times: yKeyframes.map((y) => (y - 4) / 88) }}
+          initial={{ left: "50%", top: "4%", scaleX: 1, scaleY: 1, rotate: 0 }}
+          animate={{
+            left: xKeyframes.map((x) => `${x}%`),
+            top: yKeyframes.map((y) => `${y}%`),
+            // A quick squash-and-stretch right on each peg landing sells the impact — flattened
+            // wide on contact, then popped back round as it hops up for the next leg. The very
+            // last keyframe is forced back to a perfect circle — it's also the resting state the
+            // ball is left in once the animation ends, so it must never end mid-squash.
+            scaleY: xKeyframes.map((_, i) => (i > 0 && i % 2 === 0 && i < xKeyframes.length - 1 ? 0.82 : 1)),
+            scaleX: xKeyframes.map((_, i) => (i > 0 && i % 2 === 0 && i < xKeyframes.length - 1 ? 1.18 : 1)),
+            rotate: rotateKeyframes,
+          }}
+          transition={{ duration, ease: bounceEase, times: segTimes }}
           onAnimationComplete={() => setLanded(true)}
         />
       </div>
@@ -850,7 +922,7 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
   switch (category) {
     case "slots": {
       const reels = detail.reels as string[];
-      return <div className="flex gap-3 sm:gap-4 justify-center">{reels.map((s, i) => <Reel key={i} symbol={s} index={i} resultKey={resultKey} />)}</div>;
+      return <div className="flex gap-3 sm:gap-4 justify-evenly w-full">{reels.map((s, i) => <Reel key={i} symbol={s} index={i} resultKey={resultKey} />)}</div>;
     }
     case "dice": {
       if (gameKey === "sic-bo") {
@@ -895,9 +967,9 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
         const shellPath = `M ${arcXs.map((x, i) => `${x} ${arcYs[i]}`).join(" L ")}`;
         const impactColor = win ? "#34d399" : "#f87171";
         return (
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center gap-3 w-full">
             <motion.svg
-              viewBox={`0 0 ${width} ${height}`} width={width} height={height} className="max-w-full rounded-lg"
+              viewBox={`0 0 ${width} ${height}`} width="100%" className="rounded-lg"
               initial={{ scale: 1 }}
               animate={{ scale: [1, 1.015, 1] }}
               transition={{ delay: impactAt, duration: 0.25 }}
@@ -1030,7 +1102,7 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
 
       const targetPct = (targetBp / 9999) * 100;
       return (
-        <div className="w-full max-w-md">
+        <div className="w-full">
           <div className="relative h-7 rounded-full bg-zinc-800 overflow-hidden shadow-inner">
             <div className="absolute inset-y-0 left-0 bg-emerald-600/40" style={{ width: `${targetPct}%` }} />
             <motion.div
@@ -1068,6 +1140,8 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
       if ("called" in detail) {
         const called = detail.called as number[];
         const winLine = detail.winLine as number[] | null;
+        // Older stored results predate the per-column number layout — fall back to reading order.
+        const cardNumbers = (detail.cardNumbers as number[] | undefined) ?? Array.from({ length: 25 }, (_, i) => i + 1);
         // Numbers "call" in the order they were drawn, not grid order — reads like a real bingo
         // caller going number by number, and the completed line only lights up once every call
         // has landed, so you can't tell a line is done before the last number in it is called.
@@ -1075,7 +1149,7 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
         const callStep = 0.28;
         const revealedAt = called.length * callStep + 0.3;
         return (
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center gap-3 w-full">
             {/* Balls drop into the caller tray one at a time, in draw order — a real bingo caller
                 announces one number at a time instead of dumping the whole card at once, and the
                 grid cell for each number lights up on the same beat as its ball lands. */}
@@ -1088,11 +1162,14 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
                   transition={{ delay: i * callStep, type: "spring", stiffness: 300, damping: 16 }}
                   className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 border border-amber-200 flex items-center justify-center text-[11px] font-extrabold text-amber-950 shadow-[0_2px_6px_rgba(0,0,0,0.4)]"
                 >
-                  {pos + 1}
+                  {cardNumbers[pos]}
                 </motion.div>
               ))}
             </div>
-            <div className="grid grid-cols-5 gap-1 sm:gap-1.5 w-fit mx-auto">
+            <div className="grid grid-cols-5 gap-1 sm:gap-1.5 w-full">
+              {["B", "I", "N", "G", "O"].map((letter) => (
+                <div key={letter} className="text-center text-xs font-extrabold text-amber-400">{letter}</div>
+              ))}
               {Array.from({ length: 25 }, (_, i) => {
                 const order = callOrder.get(i);
                 const isCalled = order !== undefined;
@@ -1100,9 +1177,9 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
                 return (
                   <div
                     key={`${resultKey}-${i}`}
-                    className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-md flex items-center justify-center text-xs sm:text-sm font-bold border-2 bg-zinc-900 text-zinc-600 border-zinc-800"
+                    className="relative w-full aspect-square rounded-md flex items-center justify-center text-xs sm:text-sm font-bold border-2 bg-zinc-900 text-zinc-600 border-zinc-800"
                   >
-                    {i + 1}
+                    {cardNumbers[i]}
                     {/* Green only fades in exactly on this number's own beat in the call order —
                         not at mount, so an uncalled number can't be told apart from a called one
                         by squinting at a faint color before its turn. */}
@@ -1113,7 +1190,7 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: (order as number) * callStep, type: "spring" }}
                       >
-                        {i + 1}
+                        {cardNumbers[i]}
                       </motion.div>
                     )}
                     {/* The gold "this is part of the completed line" color only appears once the
@@ -1126,7 +1203,7 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
                         animate={{ opacity: 1 }}
                         transition={{ delay: revealedAt, duration: 0.3 }}
                       >
-                        {i + 1}
+                        {cardNumbers[i]}
                       </motion.div>
                     )}
                   </div>
@@ -1164,39 +1241,58 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
         const flipDuration = 0.4;
         const revealedAt = (cells.length - 1) * flipStagger + flipDuration;
         return (
-          <div>
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-fit mx-auto" style={{ perspective: 600 }}>
-              {cells.map((sym, i) => {
-                const Icon = SYMBOL_ICON[sym];
-                const onLine = winLine?.includes(i) ?? false;
-                return (
-                  <div key={`${resultKey}-${i}`} className="relative w-16 h-16 sm:w-20 sm:h-20">
-                    <motion.div
-                      className="absolute inset-0"
-                      style={{ transformStyle: "preserve-3d" }}
-                      initial={{ rotateY: 0 }}
-                      animate={{ rotateY: 180 }}
-                      transition={{ delay: i * flipStagger, duration: flipDuration, ease: "easeIn" }}
-                    >
-                      <div
-                        className="absolute inset-0 rounded-lg bg-gradient-to-br from-amber-600 to-amber-800 border-2 border-amber-500/40 flex items-center justify-center text-amber-200 text-2xl font-extrabold"
-                        style={{ backfaceVisibility: "hidden" }}
-                      >
-                        ?
-                      </div>
+          <div className="w-full">
+            <div
+              className="relative w-full rounded-2xl p-4 sm:p-5"
+              style={{
+                background: "radial-gradient(ellipse at 50% 0%, #1a1005 0%, #0a0a0c 70%)",
+                border: "3px solid transparent",
+                backgroundImage:
+                  "radial-gradient(ellipse at 50% 0%, #1a1005 0%, #0a0a0c 70%), linear-gradient(135deg, #fde68a, #b45309 30%, #fde68a 55%, #78350f 80%, #fde68a)",
+                backgroundOrigin: "border-box",
+                backgroundClip: "padding-box, border-box",
+                boxShadow: "0 0 40px -10px rgba(245,158,11,0.5), inset 0 0 30px -8px rgba(245,158,11,0.15)",
+              }}
+            >
+              <p className="text-center text-xs sm:text-sm font-extrabold tracking-[0.2em] text-amber-300 mb-3" style={{ textShadow: "0 0 10px rgba(245,158,11,0.6)" }}>
+                SCRATCH GOLD
+              </p>
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2" style={{ perspective: 600 }}>
+                {cells.map((sym, i) => {
+                  const Icon = SYMBOL_ICON[sym];
+                  const onLine = winLine?.includes(i) ?? false;
+                  return (
+                    <div key={`${resultKey}-${i}`} className="relative w-full aspect-square">
                       <motion.div
-                        className="absolute inset-0 rounded-lg bg-zinc-950 border-2 flex items-center justify-center p-2"
-                        style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-                        initial={{ borderColor: "#3f3f46", boxShadow: "0 0 0px rgba(245,158,11,0)" }}
-                        animate={onLine ? { borderColor: "#fbbf24", boxShadow: "0 0 20px -2px rgba(245,158,11,0.9)" } : undefined}
-                        transition={{ delay: revealedAt, duration: 0.3 }}
+                        className="absolute inset-0"
+                        style={{ transformStyle: "preserve-3d" }}
+                        initial={{ rotateY: 0 }}
+                        animate={{ rotateY: 180 }}
+                        transition={{ delay: i * flipStagger, duration: flipDuration, ease: "easeIn" }}
                       >
-                        {Icon ? <Icon className="w-full h-full" /> : sym}
+                        <div
+                          className="absolute inset-0 rounded-lg flex items-center justify-center text-amber-100 text-2xl font-extrabold border-2 border-amber-300/60"
+                          style={{
+                            backfaceVisibility: "hidden",
+                            background: "repeating-linear-gradient(135deg, #b45309 0px, #d97706 6px, #92400e 12px)",
+                          }}
+                        >
+                          ?
+                        </div>
+                        <motion.div
+                          className="absolute inset-0 rounded-lg bg-zinc-950 border-2 flex items-center justify-center p-2"
+                          style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                          initial={{ borderColor: "#3f3f46", boxShadow: "0 0 0px rgba(245,158,11,0)" }}
+                          animate={onLine ? { borderColor: "#fbbf24", boxShadow: "0 0 20px -2px rgba(245,158,11,0.9)" } : undefined}
+                          transition={{ delay: revealedAt, duration: 0.3 }}
+                        >
+                          {Icon ? <Icon className="w-full h-full" /> : sym}
+                        </motion.div>
                       </motion.div>
-                    </motion.div>
-                  </div>
-                );
-              })}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
             <motion.p
               className="text-center text-sm text-zinc-400 mt-3"
@@ -1265,9 +1361,9 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
       const hits = detail.hits as number;
       const picks = (detail.picks as number[] | undefined) ?? [];
       return (
-        <div>
+        <div className="w-full">
           <p className="text-center text-sm text-zinc-400 mb-2">Numbers drawn — gold ring = one of your picks</p>
-          <div className="grid grid-cols-8 gap-1 sm:gap-1.5 w-fit mx-auto">
+          <div className="grid grid-cols-8 gap-1 sm:gap-1.5 w-full">
             {drawn.sort((a, b) => a - b).map((n, i) => {
               const isPick = picks.includes(n);
               return (
@@ -1276,7 +1372,7 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: i * 0.05, type: "spring" }}
-                  className={`w-8 h-8 sm:w-11 sm:h-11 rounded-lg font-bold flex items-center justify-center text-xs sm:text-base ${
+                  className={`w-full aspect-square rounded-lg font-bold flex items-center justify-center text-xs sm:text-base ${
                     isPick
                       ? "bg-amber-500 text-zinc-950 ring-3 ring-emerald-400 shadow-[0_0_16px_-2px_rgba(16,185,129,0.9)]"
                       : "bg-zinc-800 text-zinc-400"
@@ -1373,7 +1469,12 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
         const pv = detail.pv as number;
         const bv = detail.bv as number;
         const winner = detail.winner as "player" | "banker" | "tie";
-        const cardsSettleAt = 0.5;
+        const playerCards = detail.player as string[];
+        const bankerCards = detail.banker as string[];
+        // A real hand can draw a 3rd card on either side now — the tally and compare beats have
+        // to wait for however many cards actually landed, not a count assuming exactly 2 each.
+        const maxCards = Math.max(playerCards.length, bankerCards.length);
+        const cardsSettleAt = (maxCards - 1) * 0.15 + 0.35;
         const tallyAt = cardsSettleAt + 0.15;
         const compareAt = tallyAt + 0.6;
         const playerWins = winner === "player";

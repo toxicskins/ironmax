@@ -1,3 +1,5 @@
+import { COMPANY } from "@/lib/company";
+
 export const metadata = { title: "Responsible Gaming — IRONMAX" };
 
 export default function ResponsibleGamingPage() {
@@ -41,7 +43,9 @@ export default function ResponsibleGamingPage() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">Need a break from IRONMAX specifically?</h2>
           <p>
-            Contact us and we'll help you pause or close your account —{" "}
+            Contact us at{" "}
+            <a href={`mailto:${COMPANY.email}`} className="text-amber-400 hover:underline">{COMPANY.email}</a>{" "}
+            and we'll help you pause or close your account — or use the{" "}
             <a href="/contact" className="text-amber-400 hover:underline">Contact page</a>.
           </p>
         </section>

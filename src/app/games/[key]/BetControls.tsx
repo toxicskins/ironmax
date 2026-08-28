@@ -17,7 +17,6 @@ export function BetControls({ gameKey, onChange }: { gameKey: string; onChange: 
   if (gameKey === "tower") return <TowerControls onChange={onChange} />;
   if (gameKey === "keno") return <KenoControls onChange={onChange} />;
   if (gameKey === "sic-bo") return <SicBoControls onChange={onChange} />;
-  if (gameKey === "hilo") return <HiLoControls onChange={onChange} />;
   if (gameKey === "tank-shot") return <TankShotControls onChange={onChange} />;
   return null;
 }
@@ -80,22 +79,6 @@ function CoinflipControls({ onChange }: { onChange: (p: BetParams) => void }) {
   );
 }
 
-function HiLoControls({ onChange }: { onChange: (p: BetParams) => void }) {
-  const [guess, setGuess] = useState<"higher" | "lower">("higher");
-  function pick(v: "higher" | "lower") { setGuess(v); onChange({ guess: v }); }
-  useEffect(() => { onChange({ guess }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  return (
-    <Row label="Next card is">
-      {(["higher", "lower"] as const).map((v) => (
-        <button key={v} onClick={() => pick(v)}
-          className={`px-3 py-1.5 rounded-md text-sm font-semibold capitalize ${guess === v ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
-          {v} (2.04x)
-        </button>
-      ))}
-    </Row>
-  );
-}
-
 function RouletteControls({ onChange }: { onChange: (p: BetParams) => void }) {
   const [bet, setBet] = useState("red");
   function pick(v: string) { setBet(v); onChange({ bet: v }); }
@@ -111,6 +94,7 @@ function RouletteControls({ onChange }: { onChange: (p: BetParams) => void }) {
     </Row>
   );
 }
+
 
 function MinesControls({ onChange }: { onChange: (p: BetParams) => void }) {
   const [mineCount, setMineCount] = useState(5);

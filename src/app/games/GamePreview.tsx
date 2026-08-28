@@ -5,7 +5,7 @@ import { themeFor } from "./[key]/theme";
 const MAX_MULT: Record<string, number> = {
   "slots-classic": 918, "slots-fruits": 206, limbo: 96, coinflip: 2,
   wheel: 10, roulette: 35.5, mines: 240, tower: 62914, plinko: 43.2, keno: 219,
-  hilo: 2.04, blackjack: 2.54, baccarat: 9.7, "video-poker": 144,
+  hilo: 2.04, blackjack: 2.54, baccarat: 9.7,
   "sic-bo": 207, "scratch-gold": 26,
   "memory-flip": 6.72, bingo: 3.52, "tank-shot": 19.2, "golden-ticket": 30,
 };

@@ -43,6 +43,9 @@ model User {
   minesRounds  MinesRound[]
   blackjackRounds BlackjackRound[]
   towerRounds  TowerRound[]
+  hiLoRounds   HiLoRound[]
+  baccaratRounds BaccaratRound[]
+  holdemRounds HoldemRound[]
 }
 
 model Wallet {
@@ -192,4 +195,62 @@ model TowerRound {
   clientSeed  String
   nonce       BigInt
   createdAt   DateTime @default(now())
+}
+
+// A live Hi-Lo round: the current card is drawn and shown at start, before the player commits
+// to higher/lower — the guess has to be a real choice made after seeing the card, not baked
+// into the same request that reveals it.
+model HiLoRound {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  stake       Int
+  currentCard String
+  status      String   @default("active") // active | finished
+  serverSeed  String
+  clientSeed  String
+  nonce       BigInt
+  createdAt   DateTime @default(now())
+}
+
+// A live Baccarat round: Player's 2 cards are dealt and shown at start, Banker's 2 are dealt at
+// the same time but kept hidden server-side — the bet has to be placed on real (if partial)
+// information, not after the whole table is already face up.
+model BaccaratRound {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  stake        Int
+  deck         String // JSON string[52], shuffled once at start — never sent to the client
+  playerCards  String // JSON string[2] — shown to the client immediately
+  bankerCards  String // JSON string[2] — dealt now, hidden from the client until pick
+  status       String   @default("active") // active | finished
+  serverSeed   String
+  clientSeed   String
+  nonce        BigInt
+  createdAt    DateTime @default(now())
+}
+
+// A live heads-up Texas Hold'em hand against the house bot: both hole hands and the full
+// board are dealt from one shuffled deck at start and kept server-side (the bot's hand and
+// un-revealed community cards are never sent to the client) — betting then proceeds street by
+// street across separate requests, exactly like a real hand.
+model HoldemRound {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  stake            Int // the bet/raise increment for this hand
+  deck             String // JSON string[52]: [0,1]=player hole, [2,3]=bot hole, [4-6]=flop, [7]=turn, [8]=river
+  street           String   @default("preflop") // preflop | flop | turn | river | finished
+  revealedCount    Int      @default(0) // how many of the 5 community cards are currently revealed
+  pot              Int      @default(0)
+  playerCommitted  Int      @default(0)
+  botCommitted     Int      @default(0)
+  toCall           Int      @default(0) // what the player currently owes; 0 = check/bet is their free action
+  raisesThisStreet Int      @default(0)
+  status           String   @default("active") // active | finished
+  serverSeed       String
+  clientSeed       String
+  nonce            BigInt
+  createdAt        DateTime @default(now())
 }

@@ -1,3 +1,5 @@
+import { COMPANY } from "@/lib/company";
+
 export const metadata = { title: "Terms of Service — IRONMAX" };
 
 export default function TermsPage() {
@@ -191,8 +193,9 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">12. Contact</h2>
           <p>
-            Questions about these Terms can be directed to our support team via the{" "}
-            <a href="/contact" className="text-amber-400 hover:underline">Contact</a> page.
+            Questions about these Terms can be directed to our support team at{" "}
+            <a href={`mailto:${COMPANY.email}`} className="text-amber-400 hover:underline">{COMPANY.email}</a>{" "}
+            or via the <a href="/contact" className="text-amber-400 hover:underline">Contact</a> page.
           </p>
         </section>
       </div>

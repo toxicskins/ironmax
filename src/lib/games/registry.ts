@@ -1,5 +1,6 @@
 import { randInt, shuffled } from "@/lib/fair";
 import { rollUnder, spinSlots, weightedPick } from "./helpers";
+import { bestHandRank, compareRank, handName } from "./holdem";
 import type { GameDef, GameResult } from "./types";
 
 // Every game targets a realistic ~96% long-run RTP (4% house edge), with fixed-odds bets
@@ -30,9 +31,37 @@ const CARD_SUITS = ["♠","♥","♦","♣"];
 export function freshDeck() {
   return CARD_RANKS.flatMap((r) => CARD_SUITS.map((s) => `${r}${s}`));
 }
-function rankValue(card: string) {
+export function rankValue(card: string) {
   const rank = card.slice(0, -1);
   return CARD_RANKS.indexOf(rank);
+}
+// Baccarat's own card values: A=1, 2-9 face value, 10/J/Q/K=0 — distinct from rankValue (a plain
+// deck-order index used for high-card comparisons elsewhere), which doesn't map to these at all.
+function baccaratCardValue(card: string) {
+  const rank = card.slice(0, -1);
+  if (rank === "A") return 1;
+  if (rank === "10" || rank === "J" || rank === "Q" || rank === "K") return 0;
+  return Number(rank);
+}
+function baccaratTotal(cards: string[]) {
+  return cards.reduce((s, c) => s + baccaratCardValue(c), 0) % 10;
+}
+/** The first 4 cards of a shuffled deck, dealt into Player/Banker's starting hands. Split out
+ * from the tableau so the interactive flow can show Player's hand before Banker's is resolved. */
+export function dealBaccaratInitial(deck: string[]) {
+  return { player: [deck[0], deck[1]], banker: [deck[2], deck[3]] };
+}
+/** Compares the two already-dealt 2-card hands directly — no 3rd-card draw, so every hand is
+ * exactly 2 cards a side, like a simplified baccarat variant rather than the full casino tableau. */
+export function resolveBaccaratTableau(deck: string[], initialPlayer: string[], initialBanker: string[]) {
+  const player = [...initialPlayer], banker = [...initialBanker];
+  const pv = baccaratTotal(player), bv = baccaratTotal(banker);
+  const winner: "player" | "banker" | "tie" = pv > bv ? "player" : bv > pv ? "banker" : "tie";
+  return { player, banker, pv, bv, winner };
+}
+function playBaccaratHand(deck: string[]) {
+  const { player, banker } = dealBaccaratInitial(deck);
+  return resolveBaccaratTableau(deck, player, banker);
 }
 export function blackjackValue(cards: string[]) {
   let total = 0, aces = 0;
@@ -65,14 +94,19 @@ const SLOT_PAYTABLE_FRUITS: Record<string, number[]> = {
   STAR: [12.5, 41, 206], GRAPE: [4.1, 12.5, 41], WATERMELON: [2.5, 7.4, 25], ORANGE: [1.6, 4.1, 12.5], PLUM: [0.8, 2.5, 6.1],
 };
 
-// Payouts scaled by Monte Carlo simulation (5M spins) against this exact weight table to land
+// The 9-symbol set from the game's poster art, rarest paying the most, like a real scratch card.
+// Payouts scaled by Monte Carlo simulation (8M draws) against this exact weight table to land
 // on the 0.96 RTP target — re-simulate if the weights or pay values change.
 const SCRATCH_SYMBOLS = [
-  { weight: 30, value: { key: "CHERRY", pay: 1.3 } },
-  { weight: 25, value: { key: "LEMON", pay: 1.9 } },
-  { weight: 20, value: { key: "BELL", pay: 3.2 } },
-  { weight: 15, value: { key: "BAR", pay: 6.4 } },
-  { weight: 10, value: { key: "STAR", pay: 26 } },
+  { weight: 25, value: { key: "CLOVER", pay: 2.23 } },
+  { weight: 20, value: { key: "CHERRIES", pay: 3.25 } },
+  { weight: 16, value: { key: "BELL", pay: 5.28 } },
+  { weight: 13, value: { key: "GOLDBAR", pay: 8.53 } },
+  { weight: 10, value: { key: "PLUM", pay: 14.2 } },
+  { weight: 7, value: { key: "SEVEN", pay: 24.4 } },
+  { weight: 5, value: { key: "STAR", pay: 40.6 } },
+  { weight: 3, value: { key: "CROWN", pay: 91.4 } },
+  { weight: 1, value: { key: "DIAMOND", pay: 182.7 } },
 ];
 const SCRATCH_LINES = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -324,12 +358,16 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "hilo", name: "Hi-Lo", category: "cards", minStake: 1, maxStake: 500,
-    description: "One card is shown. Guess whether the next card is higher or lower to win.",
+    description: "The current card is shown first — then you call higher or lower on what you see, not before.",
     rules: [
-      "Guess whether the next card will rank higher or lower than the shown card",
+      "The current card is dealt and shown before you guess anything",
+      "Guess whether the next card will rank higher or lower than it",
       "Correct guess: 2.04x your stake",
-      "Wrong guess: lose your stake",
+      "Tie (same rank) or wrong guess: lose your stake",
     ],
+    // This entry's `play` is unused for actual bets — Hi-Lo is interactive (see the shown card,
+    // then guess) via /api/games/hilo/{start,pick}, which need the current card to persist
+    // server-side between requests instead of resolving in one shot like every other game here.
     play: (next, params) => {
       const guess = String(params?.guess ?? "higher");
       const deck = shuffled(next, freshDeck());
@@ -373,25 +411,29 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "baccarat", name: "Baccarat", category: "cards", minStake: 1, maxStake: 500,
-    description: "Player and Banker each draw two cards — closest to 9 wins.",
+    description: "You see your own 2 cards first — the Banker's stay face down until after you've placed your bet.",
     rules: [
-      "Bet Player, Banker, or Tie before the cards are drawn",
+      "Goal: guess which side — Player or Banker — ends up closer to 9",
+      "Card totals drop the tens digit: 4+8=12 counts as 2, 3+9+8=20 counts as 0",
+      "Your 2 cards are dealt and shown first; the Banker's 2 stay hidden until you bet",
+      "Bet Player, Banker, or Tie, then both hands are revealed and resolved",
+      "Every hand is exactly 2 cards a side — no 3rd-card draw",
       "Player wins and you bet Player: 2.13x your stake",
       "Banker wins and you bet Banker: 2.13x your stake",
       "Tie and you bet Tie: 9.7x your stake",
       "Wrong bet: lose your stake",
     ],
+    // This entry's `play` is unused for actual bets — Baccarat is interactive (your 2 cards are
+    // shown before the Banker's, then you bet) via /api/games/baccarat/{start,pick}, which need
+    // the dealt-but-hidden Banker hand to persist server-side between requests instead of
+    // resolving in one shot like every other game here.
     play: (next, params) => {
       const bet = String(params?.bet ?? "player");
       const deck = shuffled(next, freshDeck());
-      const val = (c: string) => Math.min(rankValue(c) + 1, 10) % 10;
-      const player = [deck[0], deck[2]], banker = [deck[1], deck[3]];
-      const pv = (val(player[0]) + val(player[1])) % 10;
-      const bv = (val(banker[0]) + val(banker[1])) % 10;
-      let winner: "player" | "banker" | "tie" = pv > bv ? "player" : bv > pv ? "banker" : "tie";
+      const hand = playBaccaratHand(deck);
       let multiplier = 0;
-      if (bet === winner) multiplier = winner === "tie" ? 9.7 : winner === "banker" ? 2.13 : 2.13;
-      return { multiplier, detail: { player, banker, pv, bv, winner } };
+      if (bet === hand.winner) multiplier = hand.winner === "tie" ? 9.7 : 2.13;
+      return { multiplier, detail: { ...hand } };
     },
     validateParams: (params) => {
       const bet = String(params?.bet ?? "player");
@@ -400,42 +442,31 @@ export const GAMES: GameDef[] = [
     },
   },
   {
-    key: "video-poker", name: "Poker", category: "cards", minStake: 1, maxStake: 500,
-    description: "You're dealt 5 cards. A pair of 9s or better wins — the payout scales up to a big straight-flush jackpot.",
+    key: "video-poker", name: "Texas Hold'em", category: "cards", minStake: 1, maxStake: 500,
+    description: "Heads-up against the house bot. You each get 2 hole cards, then 5 community cards come out in the middle — bet, call, raise, or go all-in across four streets.",
     rules: [
-      "Straight flush: 144x",
-      "Four of a kind: 72x",
-      "Full house: 25.2x",
-      "Flush: 18x",
-      "Straight: 10.8x",
-      "Three of a kind: 8.64x",
-      "Two pair: 5.76x",
-      "Pair of 9s or better: 2.88x",
-      "Anything below a pair of 9s: lose your stake",
+      "You and the bot each get 2 hole cards, face down",
+      "5 community cards are dealt to the middle in stages: flop (3), turn (1), river (1)",
+      "After each stage, bet: check or bet if nothing's owed, call or raise if the bot bet, or go all-in anytime",
+      "Fold to give up the hand and whatever you've put in the pot",
+      "If both players are still in after the river, best 5-card hand from your 2 + the 5 community cards wins the pot",
+      "Going all-in skips straight to showing every remaining community card at once",
     ],
+    // This entry's `play` is unused for actual bets — Hold'em is fully interactive (hole cards,
+    // then a full betting round after every community-card stage) via
+    // /api/games/video-poker/{start,action}, which need the deck, both hands, and the pot to
+    // persist server-side across many requests instead of resolving in one shot like every other
+    // game here. Kept only as a rough reference: one no-betting hand dealt straight to showdown.
     play: (next) => {
       const deck = shuffled(next, freshDeck());
-      const hand = deck.slice(0, 5);
-      const ranks = hand.map(rankValue).sort((a, b) => a - b);
-      const suits = hand.map((c) => c.slice(-1));
-      const counts: Record<number, number> = {};
-      for (const r of ranks) counts[r] = (counts[r] ?? 0) + 1;
-      const groups = Object.values(counts).sort((a, b) => b - a);
-      const flush = new Set(suits).size === 1;
-      const straight = ranks.every((r, idx) => idx === 0 || r === ranks[idx - 1] + 1);
-      let multiplier = 0;
-      let combo = "No winning hand";
-      if (straight && flush) { multiplier = 144; combo = "Straight flush"; }
-      else if (groups[0] === 4) { multiplier = 72; combo = "Four of a kind"; }
-      else if (groups[0] === 3 && groups[1] === 2) { multiplier = 25.2; combo = "Full house"; }
-      else if (flush) { multiplier = 18; combo = "Flush"; }
-      else if (straight) { multiplier = 10.8; combo = "Straight"; }
-      else if (groups[0] === 3) { multiplier = 8.64; combo = "Three of a kind"; }
-      else if (groups[0] === 2 && groups[1] === 2) { multiplier = 5.76; combo = "Two pair"; }
-      // CARD_RANKS is 0-indexed ("2"=0 ... "9"=7 ... "A"=12), so "9 or better" is index >= 7 —
-      // not literal 9, which would silently require Jacks or better instead.
-      else if (groups[0] === 2 && ranks.some((r) => counts[r] === 2 && r >= 7)) { multiplier = 2.88; combo = "Pair of 9s or better"; }
-      return { multiplier, detail: { hand, combo } };
+      const player = deck.slice(0, 2);
+      const bot = deck.slice(2, 4);
+      const community = deck.slice(4, 9);
+      const playerRank = bestHandRank([...player, ...community]);
+      const botRank = bestHandRank([...bot, ...community]);
+      const cmp = compareRank(playerRank, botRank);
+      const multiplier = cmp > 0 ? 2 : cmp === 0 ? 1 : 0;
+      return { multiplier, detail: { player, bot, community, combo: handName(playerRank) } };
     },
   },
   {
@@ -482,11 +513,15 @@ export const GAMES: GameDef[] = [
     key: "scratch-gold", name: "Scratch Gold", category: "board", minStake: 1, maxStake: 500,
     description: "Reveal a 3x3 grid. Three matching symbols in any row, column, or diagonal pays out — rarer symbols pay more.",
     rules: [
-      "Three ★ Star in a line: 26x",
-      "Three BAR in a line: 6.4x",
-      "Three 🔔 Bell in a line: 3.2x",
-      "Three 🍋 Lemon in a line: 1.9x",
-      "Three 🍒 Cherry in a line: 1.3x",
+      "Three 💎 Diamond in a line: 182.7x",
+      "Three 👑 Crown in a line: 91.4x",
+      "Three ★ Star in a line: 40.6x",
+      "Three 7️⃣ Seven in a line: 24.4x",
+      "Three 🍇 Plum in a line: 14.2x",
+      "Three 🟨 Gold Bar in a line: 8.53x",
+      "Three 🔔 Bell in a line: 5.28x",
+      "Three 🍒 Cherries in a line: 3.25x",
+      "Three 🍀 Clover in a line: 2.23x",
       "No line of 3 matching symbols: lose your stake",
       "Multiple winning lines: paid at the best one",
     ],
@@ -530,10 +565,18 @@ export const GAMES: GameDef[] = [
       "No completed line: lose your stake",
     ],
     play: (next) => {
+      // Real bingo cards don't run 1-25 in reading order — each of the 5 columns draws its own
+      // numbers from a fixed range (B 1-15, I 16-30, N 31-45, G 46-60, O 61-75), shuffled
+      // independently, so the printed numbers land in a different spot on every card.
+      const cardNumbers = new Array(25).fill(0);
+      for (let col = 0; col < 5; col++) {
+        const range = shuffled(next, Array.from({ length: 15 }, (_, i) => col * 15 + i + 1));
+        for (let row = 0; row < 5; row++) cardNumbers[row * 5 + col] = range[row];
+      }
       const cardPositions = shuffled(next, Array.from({ length: 25 }, (_, i) => i));
       const called = new Set(cardPositions.slice(0, 13));
       const winLine = BINGO_LINES.find((line) => line.every((p) => called.has(p))) ?? null;
-      return { multiplier: winLine ? 3.52 : 0, detail: { called: [...called], winLine } };
+      return { multiplier: winLine ? 3.52 : 0, detail: { called: [...called], winLine, cardNumbers } };
     },
   },
   {

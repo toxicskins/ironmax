@@ -74,9 +74,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <div>
               <div className="text-xs uppercase text-zinc-500 mb-2 font-semibold">Company</div>
               <div className="flex flex-col gap-1.5 text-sm text-zinc-400">
-                <span>Legal name: —</span>
-                <span>Registration No.: —</span>
-                <span>Address: —</span>
+                <span>Legal name: Ironmax Lithuania, UAB</span>
+                <span>Registration No.: 306209351</span>
+                <span>Address: Girulių g. 10-201, LT-12112 Vilnius</span>
               </div>
             </div>
           </div>

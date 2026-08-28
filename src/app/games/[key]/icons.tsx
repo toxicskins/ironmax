@@ -135,6 +135,44 @@ export function IconStar({ className }: IconProps) {
   );
 }
 
+export function IconClover({ className }: IconProps) {
+  return (
+    <div className={className}>
+      <Badge bg="#052e16">
+        {[[19, 19], [29, 19], [19, 29], [29, 29]].map(([cx, cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r="6.5" fill="#22c55e" />
+        ))}
+        <rect x="22.5" y="27" width="3" height="9" rx="1.5" fill="#15803d" />
+      </Badge>
+    </div>
+  );
+}
+
+export function IconCrown({ className }: IconProps) {
+  return (
+    <div className={className}>
+      <Badge bg="#451a03">
+        <path d="M12 32l-2-14 7 5 7-10 7 10 7-5-2 14z" fill="#fbbf24" />
+        <rect x="12" y="32" width="24" height="4" rx="1" fill="#f59e0b" />
+        <circle cx="12" cy="18" r="2" fill="#fde68a" /><circle cx="24" cy="13" r="2" fill="#fde68a" /><circle cx="36" cy="18" r="2" fill="#fde68a" />
+      </Badge>
+    </div>
+  );
+}
+
+export function IconDiamondBadge({ className }: IconProps) {
+  return (
+    <div className={className}>
+      <Badge bg="#0c4a6e">
+        <path d="M17 17h14l5 6-12 13-12-13z" fill="#bae6fd" />
+        <path d="M17 17h14l-7 6z" fill="#e0f2fe" />
+        <path d="M17 17l-5 6 12 13z" fill="#7dd3fc" />
+        <path d="M31 17l5 6-12 13z" fill="#38bdf8" />
+      </Badge>
+    </div>
+  );
+}
+
 export function IconDice({ className }: IconProps) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="none">

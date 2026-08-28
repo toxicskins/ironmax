@@ -1,9 +1,8 @@
-/** Merchant/DBA details shown on invoices — placeholders until the real company info is
- * available (same "—" convention used in the footer's Company column). */
+/** Merchant/DBA details shown on invoices, the footer, and contact/policy pages. */
 export const COMPANY = {
-  legalName: "IRONMAX",
+  legalName: "Ironmax Lithuania, UAB",
   dba: "IRONMAX",
-  registerCode: "—",
-  address: "—",
-  email: "billing@ironmax.dev",
+  registerCode: "306209351",
+  address: "Girulių g. 10-201, LT-12112 Vilnius",
+  email: "info@ironmaxedu.com",
 };

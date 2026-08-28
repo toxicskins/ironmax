@@ -142,7 +142,7 @@ export function MinesInteractive({ minStake, maxStake, initialCoins }: {
             <p className="text-sm text-zinc-500">Loading…</p>
           ) : (
             <>
-              <div className="grid grid-cols-5 gap-2 sm:gap-3 relative z-10">
+              <div className="grid grid-cols-5 gap-2 sm:gap-3 relative z-10 w-full">
                 {Array.from({ length: 25 }, (_, i) => {
                   const isRevealed = revealed.includes(i);
                   const isHit = hitIndex === i;
@@ -158,7 +158,7 @@ export function MinesInteractive({ minStake, maxStake, initialCoins }: {
                       whileTap={phase === "active" ? { scale: 0.92 } : undefined}
                       initial={false}
                       animate={showMine ? { rotate: [0, -6, 6, 0] } : {}}
-                      className={`w-11 h-11 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center p-2 transition-colors ${
+                      className={`w-full aspect-square rounded-lg flex items-center justify-center p-2 transition-colors ${
                         showMine ? "bg-red-700" : showGem ? "bg-emerald-700" : "bg-zinc-800 hover:bg-zinc-700"
                       } ${phase === "active" && !isRevealed ? "cursor-pointer" : "cursor-default"}`}
                     >

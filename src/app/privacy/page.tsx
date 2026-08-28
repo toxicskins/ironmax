@@ -1,3 +1,5 @@
+import { COMPANY } from "@/lib/company";
+
 export const metadata = { title: "Privacy Policy — IRONMAX" };
 
 export default function PrivacyPage() {
@@ -38,8 +40,9 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-bold text-white mb-2">Your rights</h2>
           <p>
             You can view and edit your profile details from your account settings at any time. To
-            request a copy of your data or account deletion, contact us — see the{" "}
-            <a href="/contact" className="text-amber-400 hover:underline">Contact page</a>.
+            request a copy of your data or account deletion, contact us at{" "}
+            <a href={`mailto:${COMPANY.email}`} className="text-amber-400 hover:underline">{COMPANY.email}</a>{" "}
+            or via the <a href="/contact" className="text-amber-400 hover:underline">Contact page</a>.
           </p>
         </section>
 
