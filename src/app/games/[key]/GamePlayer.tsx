@@ -38,7 +38,7 @@ const GAMES_WITH_CONTROLS = new Set(["limbo", "coinflip", "roulette", "mines", "
 
 // These games reveal on the player's own action inside the stage (picking a card/ticket) instead
 // of a fixed timer — see the `manualReveal` usage below.
-const MANUAL_REVEAL_GAMES = new Set(["golden-ticket", "memory-flip"]);
+const MANUAL_REVEAL_GAMES = new Set(["golden-ticket", "memory-flip", "scratch-gold"]);
 
 function chipAmounts(min: number, max: number) {
   const raw = [min, min * 5, min * 25, max];

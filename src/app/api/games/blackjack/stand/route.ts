@@ -20,6 +20,17 @@ export async function POST(req: Request) {
     if (!round || round.userId !== userId) throw new Error("Hand not found");
     if (round.status !== "active") throw new Error("Hand already ended");
 
+    // Standing on hand A of a split just moves play to hand B — only standing on the last hand
+    // (or a non-split round) actually brings in the dealer and settles.
+    if (round.activeHand === 0 && round.splitCards) {
+      await tx.blackjackRound.update({ where: { id: roundId }, data: { activeHand: 1, handADone: true } });
+      return {
+        handA: JSON.parse(round.playerCards) as string[],
+        handB: JSON.parse(round.splitCards) as string[],
+        activeHand: 1, finished: false, movedToHandB: true,
+      };
+    }
+
     return settleDealer(tx, round);
   }).catch((e: Error) => e);
 

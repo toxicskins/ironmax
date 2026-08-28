@@ -17,14 +17,18 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
   const [stake, setStake] = useState(minStake);
   const [phase, setPhase] = useState<Phase>("setup");
   const [roundId, setRoundId] = useState<string | null>(null);
-  const [player, setPlayer] = useState<string[]>([]);
-  const [pv, setPv] = useState(0);
+  const [handA, setHandA] = useState<string[]>([]);
+  const [handB, setHandB] = useState<string[] | null>(null);
+  const [activeHand, setActiveHand] = useState<0 | 1>(0);
+  const [pvA, setPvA] = useState(0);
+  const [pvB, setPvB] = useState<number | null>(null);
   const [dealer, setDealer] = useState<string[]>([]);
   const [dealerHidden, setDealerHidden] = useState(false); // true while the hole card is still face-down
   const [doubled, setDoubled] = useState(false);
-  const [bust, setBust] = useState(false);
+  const [bustA, setBustA] = useState(false);
+  const [bustB, setBustB] = useState(false);
   const [payout, setPayout] = useState(0);
-  const [handStake, setHandStake] = useState(minStake); // the stake this hand actually settles on (doubles)
+  const [handStake, setHandStake] = useState(minStake); // total stake this hand actually settles on (double/split)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resuming, setResuming] = useState(true);
@@ -38,9 +42,11 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
         if (body.round) {
           setRoundId(body.round.roundId);
           setStake(body.round.stake);
-          setHandStake(body.round.stake);
-          setPlayer(body.round.player);
-          setPv(body.round.pv);
+          setHandStake(body.round.stake * (body.round.handB ? 2 : 1));
+          setHandA(body.round.player);
+          setPvA(body.round.pv);
+          setHandB(body.round.handB);
+          setActiveHand(body.round.activeHand ?? 0);
           setDealer([body.round.dealerUpCard]);
           setDealerHidden(true);
           setDoubled(body.round.doubled);
@@ -63,10 +69,14 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
     setLoading(false);
     if (!res.ok) { setError(body.error ?? "Could not start hand"); return; }
     setRoundId(body.roundId);
-    setPlayer(body.player);
-    setPv(body.pv);
+    setHandA(body.player);
+    setHandB(null);
+    setActiveHand(0);
+    setPvA(body.pv);
+    setPvB(null);
     setDoubled(false);
-    setBust(false);
+    setBustA(false);
+    setBustB(false);
     setHandStake(stake);
     setCoins((c) => c - stake);
     if (body.status === "finished") {
@@ -83,6 +93,12 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
     }
   }
 
+  function applyProgress(body: { handA: string[]; handB: string[] | null; activeHand: 0 | 1 }) {
+    setHandA(body.handA);
+    setHandB(body.handB);
+    setActiveHand(body.activeHand);
+  }
+
   async function hit() {
     if (loading) return;
     setLoading(true);
@@ -95,15 +111,10 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
     const body = await res.json();
     setLoading(false);
     if (!res.ok) { setError(body.error ?? "Hit failed"); return; }
-    setPlayer(body.player);
-    setPv(body.pv);
-    if (body.bust) {
-      // You already lost the moment you busted — the dealer's hole card is moot, so it stays
-      // face-down rather than showing a lone up-card value that looks like their final total.
-      setBust(true);
-      setPayout(0);
-      setPhase("finished");
-    }
+    applyProgress(body);
+    if (body.movedToHandB) { setBustA(true); return; }
+    if (body.finished) { finishWithDealer(body); return; }
+    if (body.activeHand === 1) setPvB(blackjackValueOf(body.handB!)); else setPvA(blackjackValueOf(body.handA));
   }
 
   async function stand() {
@@ -118,6 +129,7 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
     const body = await res.json();
     setLoading(false);
     if (!res.ok) { setError(body.error ?? "Stand failed"); return; }
+    if (body.movedToHandB) { applyProgress(body); return; }
     finishWithDealer(body);
   }
 
@@ -136,12 +148,11 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
     setCoins((c) => c - stake); // the matching extra stake
     setDoubled(true);
     setHandStake(stake * 2);
-    setPlayer(body.player);
-    setPv(body.pv);
+    setHandA(body.player);
+    setPvA(body.pv);
     if (body.bust) {
-      // You already lost the moment you busted — the dealer's hole card is moot, so it stays
-      // face-down rather than showing a lone up-card value that looks like their final total.
-      setBust(true);
+      // Hole card stays face-down — a bust never needs the dealer's total.
+      setBustA(true);
       setPayout(0);
       setPhase("finished");
     } else {
@@ -149,9 +160,37 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
     }
   }
 
-  function finishWithDealer(body: { player: string[]; dealer: string[]; pv: number; payout: number }) {
-    setPlayer(body.player);
-    setPv(body.pv);
+  async function split() {
+    if (loading) return;
+    setLoading(true);
+    setError(null);
+    const res = await fetch("/api/games/blackjack/split", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roundId }),
+    });
+    const body = await res.json();
+    setLoading(false);
+    if (!res.ok) { setError(body.error ?? "Split failed"); return; }
+    setCoins((c) => c - stake); // the matching extra stake
+    setHandStake(stake * 2);
+    if (body.finished) { finishWithDealer(body); return; }
+    setHandA(body.handA);
+    setHandB(body.handB);
+    setActiveHand(body.activeHand);
+    setPvA(blackjackValueOf(body.handA));
+    setPvB(blackjackValueOf(body.handB));
+  }
+
+  function finishWithDealer(body: {
+    handA: string[]; handB: string[] | null; dealer: string[]; pvA: number; pvB: number | null; payout: number;
+  }) {
+    setHandA(body.handA);
+    setHandB(body.handB);
+    setPvA(body.pvA);
+    setPvB(body.pvB);
+    setBustA(body.pvA > 21);
+    setBustB(body.pvB !== null && body.pvB > 21);
     setDealer(body.dealer);
     setDealerHidden(false);
     setPayout(body.payout);
@@ -167,16 +206,22 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
   function playAgain() {
     setPhase("setup");
     setRoundId(null);
-    setPlayer([]);
+    setHandA([]);
+    setHandB(null);
+    setActiveHand(0);
     setDealer([]);
     setDealerHidden(false);
     setDoubled(false);
-    setBust(false);
+    setBustA(false);
+    setBustB(false);
     setPayout(0);
   }
 
-  const canDouble = phase === "active" && player.length === 2 && !doubled && stake <= coins;
+  const canDouble = phase === "active" && !handB && handA.length === 2 && !doubled && stake <= coins;
+  const canSplit = phase === "active" && !handB && handA.length === 2
+    && handA[0].slice(0, -1) === handA[1].slice(0, -1) && !doubled && stake <= coins;
   const netDelta = payout - handStake;
+  const dealerFinalValue = dealerHidden ? null : blackjackValueOf(dealer);
 
   return (
     <div className="flex flex-col">
@@ -197,7 +242,7 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
             <>
               <div className="flex flex-col items-center gap-2 relative z-10">
                 <div className="text-sm text-zinc-400 font-medium">
-                  Dealer {dealerHidden ? "" : `(${blackjackValueOf(dealer)})`}
+                  Dealer {dealerFinalValue !== null ? `(${dealerFinalValue})` : ""}
                 </div>
                 <div className="flex gap-2 sm:gap-3 justify-center">
                   <CardRow cards={dealer} resultKey={`${roundId}-dealer`} delays={dealerDealDelays(dealer.length)} />
@@ -205,21 +250,31 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
                 </div>
               </div>
 
-              <div className="flex flex-col items-center gap-2 relative z-10">
-                <CardRow cards={player} resultKey={`${roundId}-player`} delays={playerDealDelays(player.length)} />
-                <div className="text-sm text-zinc-400 font-medium">You ({pv})</div>
+              <div className={`flex ${handB ? "gap-6 sm:gap-10" : ""} justify-center relative z-10`}>
+                <div className={`flex flex-col items-center gap-2 ${handB && activeHand === 0 && phase === "active" ? "opacity-100" : handB ? "opacity-70" : ""}`}>
+                  <CardRow cards={handA} resultKey={`${roundId}-handA-${handA.length}`} delays={playerDealDelays(handA.length)} />
+                  <div className="text-sm text-zinc-400 font-medium">
+                    {handB ? "Hand 1" : "You"} ({pvA}){bustA && " — bust"}
+                  </div>
+                </div>
+                {handB && (
+                  <div className={`flex flex-col items-center gap-2 ${activeHand === 1 && phase === "active" ? "opacity-100" : "opacity-70"}`}>
+                    <CardRow cards={handB} resultKey={`${roundId}-handB-${handB.length}`} />
+                    <div className="text-sm text-zinc-400 font-medium">
+                      Hand 2 ({pvB}){bustB && " — bust"}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {phase === "finished" && (
                 <div className="flex flex-col items-center gap-1 relative z-10">
-                  {bust ? (
-                    <p className="text-2xl font-extrabold text-red-400">Bust — over 21</p>
-                  ) : payout === 0 ? (
-                    <p className="text-2xl font-extrabold text-red-400">Dealer wins</p>
-                  ) : netDelta > 0 ? (
+                  {netDelta > 0 ? (
                     <p className="text-2xl font-extrabold text-emerald-400">+{payout} points</p>
+                  ) : payout > 0 ? (
+                    <p className="text-2xl font-extrabold text-zinc-300">Push — {payout} points back</p>
                   ) : (
-                    <p className="text-2xl font-extrabold text-zinc-300">Push — stake returned</p>
+                    <p className="text-2xl font-extrabold text-red-400">Dealer wins</p>
                   )}
                 </div>
               )}
@@ -271,28 +326,37 @@ export function BlackjackInteractive({ minStake, maxStake, initialCoins }: {
       )}
 
       {phase === "active" && (
-        <div className="mt-4 grid grid-cols-3 gap-2.5">
+        <div className={`mt-4 grid ${canSplit ? "grid-cols-4" : "grid-cols-3"} gap-2.5`}>
           <button
             onClick={hit}
             disabled={loading}
-            className="rounded-lg bg-gradient-to-b from-sky-400 to-sky-600 text-zinc-950 font-extrabold text-base sm:text-lg tracking-wide py-3 shadow-[0_0_20px_-4px_rgba(56,189,248,0.8)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
+            className="rounded-lg bg-gradient-to-b from-sky-400 to-sky-600 text-zinc-950 font-extrabold text-sm sm:text-lg tracking-wide py-3 shadow-[0_0_20px_-4px_rgba(56,189,248,0.8)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
           >
             Hit
           </button>
           <button
             onClick={stand}
             disabled={loading}
-            className="rounded-lg bg-gradient-to-b from-emerald-400 to-emerald-600 text-zinc-950 font-extrabold text-base sm:text-lg tracking-wide py-3 shadow-[0_0_20px_-4px_rgba(16,185,129,0.8)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
+            className="rounded-lg bg-gradient-to-b from-emerald-400 to-emerald-600 text-zinc-950 font-extrabold text-sm sm:text-lg tracking-wide py-3 shadow-[0_0_20px_-4px_rgba(16,185,129,0.8)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
           >
             Stand
           </button>
           <button
             onClick={double}
             disabled={loading || !canDouble}
-            className="rounded-lg bg-gradient-to-b from-amber-400 to-amber-600 text-zinc-950 font-extrabold text-base sm:text-lg tracking-wide py-3 shadow-[0_0_20px_-4px_rgba(245,158,11,0.8)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
+            className="rounded-lg bg-gradient-to-b from-amber-400 to-amber-600 text-zinc-950 font-extrabold text-sm sm:text-lg tracking-wide py-3 shadow-[0_0_20px_-4px_rgba(245,158,11,0.8)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
           >
             Double
           </button>
+          {canSplit && (
+            <button
+              onClick={split}
+              disabled={loading}
+              className="rounded-lg bg-gradient-to-b from-purple-400 to-purple-600 text-zinc-950 font-extrabold text-sm sm:text-lg tracking-wide py-3 shadow-[0_0_20px_-4px_rgba(168,85,247,0.8)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
+            >
+              Split
+            </button>
+          )}
         </div>
       )}
 

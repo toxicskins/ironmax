@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import * as deck from "@letele/playing-cards";
 import {
@@ -343,6 +343,200 @@ function TwinFlipBoard({ matched, resultKey, onRevealed }: {
           className="text-sm text-zinc-400"
         >
           {matched ? "Matched! Both picks show the same card" : "No match — your two picks differ"}
+        </motion.p>
+      )}
+    </div>
+  );
+}
+
+// A real scratch-off cell: a canvas painted with the gold foil texture sits over the already-
+// rendered symbol underneath, and dragging the pointer erases it (destination-out) like an
+// actual coin on a scratch ticket — the symbol was never on a timer, it was always there,
+// just physically covered until scratched away.
+const SCRATCH_REVEAL_THRESHOLD = 0.5; // fraction of the cell that must be cleared to auto-finish it
+
+function ScratchCell({ resultKey, revealed, onRevealed, children }: {
+  resultKey: string; revealed: boolean; onRevealed: () => void; children: React.ReactNode;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const scratchingRef = useRef(false);
+  const doneRef = useRef(false);
+
+  useEffect(() => {
+    doneRef.current = revealed;
+  }, [revealed]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || revealed) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    let raf = 0;
+
+    function paintFoil() {
+      if (!canvas || !ctx) return;
+      const { width, height } = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const grad = ctx.createLinearGradient(0, 0, width, height);
+      grad.addColorStop(0, "#fde68a");
+      grad.addColorStop(0.3, "#d97706");
+      grad.addColorStop(0.55, "#b45309");
+      grad.addColorStop(1, "#92400e");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+      ctx.strokeStyle = "rgba(253,230,138,0.5)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(1, 1, width - 2, height - 2);
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = `bold ${Math.round(width * 0.32)}px Georgia, serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("?", width / 2, height / 2 + width * 0.02);
+    }
+    paintFoil();
+
+    function scratchAt(clientX: number, clientY: number) {
+      if (!canvas || !ctx) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left, y = clientY - rect.top;
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(rect.width, rect.height) * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    function checkCleared() {
+      if (!canvas || !ctx || doneRef.current) return;
+      const { width, height } = canvas;
+      const sample = ctx.getImageData(0, 0, width, height).data;
+      let cleared = 0;
+      const step = 4 * 6; // every 6th pixel's alpha byte — plenty for a coarse coverage estimate
+      let total = 0;
+      for (let i = 3; i < sample.length; i += step) {
+        total++;
+        if (sample[i] < 40) cleared++;
+      }
+      if (total > 0 && cleared / total >= SCRATCH_REVEAL_THRESHOLD) {
+        doneRef.current = true;
+        onRevealed();
+      }
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      scratchingRef.current = true;
+      canvas?.setPointerCapture(e.pointerId);
+      scratchAt(e.clientX, e.clientY);
+      raf = requestAnimationFrame(checkCleared);
+    }
+    function onPointerMove(e: PointerEvent) {
+      if (!scratchingRef.current) return;
+      scratchAt(e.clientX, e.clientY);
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(checkCleared);
+    }
+    function onPointerUp() {
+      scratchingRef.current = false;
+    }
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointerleave", onPointerUp);
+    return () => {
+      cancelAnimationFrame(raf);
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", onPointerUp);
+      canvas.removeEventListener("pointerleave", onPointerUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultKey, revealed]);
+
+  return (
+    <div className="relative w-full h-full rounded-lg overflow-hidden">
+      {children}
+      {!revealed && (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full touch-none cursor-pointer"
+          style={{ transition: "opacity 0.35s ease" }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ScratchGoldBoard({ cells, winLine, resultKey, onRevealed }: {
+  cells: string[]; winLine: number[] | null; resultKey: string; onRevealed?: () => void;
+}) {
+  const [revealedSet, setRevealedSet] = useState<Set<number>>(new Set());
+  useEffect(() => setRevealedSet(new Set()), [resultKey]);
+
+  const allRevealed = revealedSet.size === cells.length;
+
+  function markRevealed(i: number) {
+    setRevealedSet((prev) => {
+      if (prev.has(i)) return prev;
+      const next = new Set(prev);
+      next.add(i);
+      if (next.size === cells.length) onRevealed?.();
+      return next;
+    });
+  }
+
+  return (
+    <div className="w-full">
+      <div
+        className="relative w-full rounded-2xl p-4 sm:p-5"
+        style={{
+          background: "radial-gradient(ellipse at 50% 0%, #1a1005 0%, #0a0a0c 70%)",
+          border: "3px solid transparent",
+          backgroundImage:
+            "radial-gradient(ellipse at 50% 0%, #1a1005 0%, #0a0a0c 70%), linear-gradient(135deg, #fde68a, #b45309 30%, #fde68a 55%, #78350f 80%, #fde68a)",
+          backgroundOrigin: "border-box",
+          backgroundClip: "padding-box, border-box",
+          boxShadow: "0 0 40px -10px rgba(245,158,11,0.5), inset 0 0 30px -8px rgba(245,158,11,0.15)",
+        }}
+      >
+        <p className="text-center text-xs sm:text-sm font-extrabold tracking-[0.2em] text-amber-300 mb-3" style={{ textShadow: "0 0 10px rgba(245,158,11,0.6)" }}>
+          SCRATCH GOLD
+        </p>
+        {!allRevealed && (
+          <p className="text-center text-[11px] text-amber-200/70 mb-2">Scratch each square to reveal it</p>
+        )}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+          {cells.map((sym, i) => {
+            const Icon = SYMBOL_ICON[sym];
+            const onLine = winLine?.includes(i) ?? false;
+            const cellRevealed = revealedSet.has(i);
+            return (
+              <div key={`${resultKey}-${i}`} className="relative w-full aspect-square">
+                <ScratchCell resultKey={`${resultKey}-${i}`} revealed={cellRevealed} onRevealed={() => markRevealed(i)}>
+                  <motion.div
+                    className="absolute inset-0 rounded-lg bg-zinc-950 border-2 flex items-center justify-center p-2"
+                    initial={{ borderColor: "#3f3f46", boxShadow: "0 0 0px rgba(245,158,11,0)" }}
+                    animate={onLine && allRevealed ? { borderColor: "#fbbf24", boxShadow: "0 0 20px -2px rgba(245,158,11,0.9)" } : undefined}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {Icon ? <Icon className="w-full h-full" /> : sym}
+                  </motion.div>
+                </ScratchCell>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {allRevealed && (
+        <motion.p
+          className="text-center text-sm text-zinc-400 mt-3"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          {winLine ? "Matching line — gold outline" : "No matching line of 3"}
         </motion.p>
       )}
     </div>
@@ -756,14 +950,21 @@ function PlinkoBoard({ bucket, rows, resultKey }: { bucket: number; rows: number
     const times: number[] = [0];
     const hits: { r: number; c: number }[] = [];
     for (let i = 0; i < steps; i++) {
-      const t = (i + 1) / steps;
-      const amplitude = 22 * (1 - t);
-      const wobble = i % 2 === 0 ? 1 : -1;
-      const smoothX = 50 * (1 - t) + finalX * t + amplitude * wobble * (1 - t);
       const { top, xs: rowXs } = pegRowLayout(i);
+      const prevX = xs[xs.length - 1];
+      // Home in on the bucket gradually — each row only closes an even share of whatever
+      // horizontal distance is still left, so the drift toward the target spreads smoothly over
+      // every row instead of correcting late with one big last-row jump (which is what read as
+      // "flying" sideways rather than falling). A little alternating jitter keeps it from
+      // looking like a perfectly straight ramp.
+      const spacing = 100 / rowXs.length;
+      const remaining = steps - i;
+      const evenStep = (finalX - prevX) / remaining;
+      const jitter = (i % 2 === 0 ? 1 : -1) * spacing * 0.12;
+      const target = prevX + evenStep + (i === steps - 1 ? 0 : jitter);
       let col = 0;
       for (let c = 1; c < rowXs.length; c++) {
-        if (Math.abs(rowXs[c] - smoothX) < Math.abs(rowXs[col] - smoothX)) col = c;
+        if (Math.abs(rowXs[c] - target) < Math.abs(rowXs[col] - target)) col = c;
       }
       // The very last row's landing x is forced to the real bucket position, not the nearest
       // peg — it has to line up with the bucket strip below, which pegs don't guarantee.
@@ -1232,77 +1433,13 @@ export function GameResultView({ category, gameKey, detail, win, onRevealed }: {
         );
       }
       if ("cells" in detail) {
-        const cells = detail.cells as string[];
-        const winLine = detail.winLine as number[] | null;
-        // Cells flip one at a time, left-to-right — real scratch-card pacing — but the win/lose
-        // line highlight and outcome text only appear once the LAST cell has flipped, so seeing
-        // symbols land one by one never tips you off before the full card is revealed.
-        const flipStagger = 0.18;
-        const flipDuration = 0.4;
-        const revealedAt = (cells.length - 1) * flipStagger + flipDuration;
         return (
-          <div className="w-full">
-            <div
-              className="relative w-full rounded-2xl p-4 sm:p-5"
-              style={{
-                background: "radial-gradient(ellipse at 50% 0%, #1a1005 0%, #0a0a0c 70%)",
-                border: "3px solid transparent",
-                backgroundImage:
-                  "radial-gradient(ellipse at 50% 0%, #1a1005 0%, #0a0a0c 70%), linear-gradient(135deg, #fde68a, #b45309 30%, #fde68a 55%, #78350f 80%, #fde68a)",
-                backgroundOrigin: "border-box",
-                backgroundClip: "padding-box, border-box",
-                boxShadow: "0 0 40px -10px rgba(245,158,11,0.5), inset 0 0 30px -8px rgba(245,158,11,0.15)",
-              }}
-            >
-              <p className="text-center text-xs sm:text-sm font-extrabold tracking-[0.2em] text-amber-300 mb-3" style={{ textShadow: "0 0 10px rgba(245,158,11,0.6)" }}>
-                SCRATCH GOLD
-              </p>
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2" style={{ perspective: 600 }}>
-                {cells.map((sym, i) => {
-                  const Icon = SYMBOL_ICON[sym];
-                  const onLine = winLine?.includes(i) ?? false;
-                  return (
-                    <div key={`${resultKey}-${i}`} className="relative w-full aspect-square">
-                      <motion.div
-                        className="absolute inset-0"
-                        style={{ transformStyle: "preserve-3d" }}
-                        initial={{ rotateY: 0 }}
-                        animate={{ rotateY: 180 }}
-                        transition={{ delay: i * flipStagger, duration: flipDuration, ease: "easeIn" }}
-                      >
-                        <div
-                          className="absolute inset-0 rounded-lg flex items-center justify-center text-amber-100 text-2xl font-extrabold border-2 border-amber-300/60"
-                          style={{
-                            backfaceVisibility: "hidden",
-                            background: "repeating-linear-gradient(135deg, #b45309 0px, #d97706 6px, #92400e 12px)",
-                          }}
-                        >
-                          ?
-                        </div>
-                        <motion.div
-                          className="absolute inset-0 rounded-lg bg-zinc-950 border-2 flex items-center justify-center p-2"
-                          style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-                          initial={{ borderColor: "#3f3f46", boxShadow: "0 0 0px rgba(245,158,11,0)" }}
-                          animate={onLine ? { borderColor: "#fbbf24", boxShadow: "0 0 20px -2px rgba(245,158,11,0.9)" } : undefined}
-                          transition={{ delay: revealedAt, duration: 0.3 }}
-                        >
-                          {Icon ? <Icon className="w-full h-full" /> : sym}
-                        </motion.div>
-                      </motion.div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <motion.p
-              className="text-center text-sm text-zinc-400 mt-3"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: revealedAt }}
-            >
-              {winLine ? "Matching line — gold outline" : "No matching line of 3"}
-            </motion.p>
-          </div>
+          <ScratchGoldBoard
+            cells={detail.cells as string[]}
+            winLine={detail.winLine as number[] | null}
+            resultKey={resultKey}
+            onRevealed={onRevealed}
+          />
         );
       }
       if ("grid" in detail) {

@@ -171,7 +171,7 @@ export function TowerInteractive({ minStake, maxStake, initialCoins }: {
                             onClick={() => pick(floor, tileIndex)}
                             whileTap={isCurrent ? { scale: 0.92 } : undefined}
                             animate={bustedHere ? { rotate: [0, -6, 6, 0] } : {}}
-                            className={`flex-1 aspect-square rounded-lg flex items-center justify-center p-2 transition-colors ${
+                            className={`flex-1 h-9 sm:h-12 rounded-lg flex items-center justify-center p-1.5 sm:p-2 transition-colors ${
                               bustedHere
                                 ? "bg-red-700"
                                 : pickedHere

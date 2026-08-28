@@ -167,9 +167,16 @@ model BlackjackRound {
   stake       Int
   deck        String // JSON string[52], shuffled once at start — never sent to the client
   drawIndex   Int      @default(4) // next undealt index into `deck`; 4 cards already dealt at start
-  playerCards String // JSON string[]
+  playerCards String // JSON string[] — hand A (the only hand, unless split)
   dealerCards String // JSON string[]
   doubled     Boolean  @default(false)
+  // Split support: splitCards is hand B, dealt only after Split. Hand A is played out first
+  // (activeHand 0); once it stands/busts, activeHand flips to 1 and hand B is played; once both
+  // are done the dealer plays out once and both hands settle against the same dealer total.
+  splitCards  String? // JSON string[] — hand B, null unless split
+  activeHand  Int      @default(0) // 0 = playing hand A, 1 = playing hand B
+  handADone   Boolean  @default(false)
+  handABust   Boolean  @default(false)
   status      String   @default("active") // active | finished
   serverSeed  String
   clientSeed  String

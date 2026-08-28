@@ -22,6 +22,8 @@ export async function GET() {
       pv: blackjackValue(player),
       dealerUpCard: (JSON.parse(round.dealerCards) as string[])[0],
       doubled: round.doubled,
+      handB: round.splitCards ? (JSON.parse(round.splitCards) as string[]) : null,
+      activeHand: round.activeHand,
     },
   });
 }
