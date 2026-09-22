@@ -71,11 +71,6 @@ function normalizeBaseUrl(apiUrl?: string | null) {
   return (apiUrl?.trim() || PAYNET_API_URL).replace(/\/+$/, "");
 }
 
-function callbackUrl() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "");
-  return appUrl ? `${appUrl}/api/webhooks/paynet` : undefined;
-}
-
 function countryCode(country: string) {
   return COUNTRY_CODES[country] ?? country.slice(0, 2).toUpperCase();
 }
@@ -94,6 +89,7 @@ export async function createPaynetPayment(opts: {
   amountEur: number;
   customerEmail: string;
   returnUrl: string;
+  callbackUrl: string;
   ipAddress: string;
   billing?: PaynetBilling;
   credentials: PaynetCredentials;
@@ -118,10 +114,10 @@ export async function createPaynetPayment(opts: {
     email: opts.customerEmail,
     currency: "EUR",
     ipaddress: opts.ipAddress,
-    site_url: process.env.NEXT_PUBLIC_APP_URL ?? opts.returnUrl,
+    site_url: new URL(opts.returnUrl).origin,
     purpose: opts.customerEmail,
     redirect_url: opts.returnUrl,
-    ...(callbackUrl() ? { server_callback_url: callbackUrl()! } : {}),
+    server_callback_url: opts.callbackUrl,
     merchant_data: opts.orderId,
     control,
   });

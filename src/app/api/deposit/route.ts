@@ -21,6 +21,13 @@ function requestIp(req: Request) {
     || "127.0.0.1";
 }
 
+function publicOrigin(req: Request) {
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const host = forwardedHost?.split(",")[0]?.trim() || req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || new URL(req.url).protocol.replace(":", "");
+  return host ? `${proto}://${host}` : new URL(req.url).origin;
+}
+
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -49,11 +56,13 @@ export async function POST(req: Request) {
   });
 
   try {
+    const origin = publicOrigin(req);
     const payment = await createPaynetPayment({
       orderId: pending.id,
       amountEur: parsed.data.eurAmount,
       customerEmail: session.user.email!,
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/status?order=${pending.id}`,
+      returnUrl: `${origin}/payment/status?order=${pending.id}`,
+      callbackUrl: `${origin}/api/webhooks/paynet`,
       ipAddress: requestIp(req),
       billing,
       credentials: paymentMethod,
