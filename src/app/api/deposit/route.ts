@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       orderId: pending.id,
       amountEur: parsed.data.eurAmount,
       customerEmail: session.user.email!,
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/account?deposit=pending`,
+      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/status?order=${pending.id}`,
       ipAddress: requestIp(req),
       billing,
       credentials: paymentMethod,
