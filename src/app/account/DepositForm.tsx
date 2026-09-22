@@ -8,6 +8,12 @@ type Billing = {
   phone: string;
 };
 
+type PaymentMethod = {
+  id: string;
+  name: string;
+  imageUrl: string;
+};
+
 const EMPTY_BILLING: Billing = {
   firstName: "", lastName: "",
   street: "", city: "", postalCode: "", country: "",
@@ -30,9 +36,18 @@ const OTHER_COUNTRIES = [
 
 const COUNTRIES = [...EU_UK_COUNTRIES, ...OTHER_COUNTRIES];
 
-export function DepositForm({ profileFirstName, profileLastName }: { profileFirstName?: string; profileLastName?: string }) {
+export function DepositForm({
+  profileFirstName,
+  profileLastName,
+  paymentMethods,
+}: {
+  profileFirstName?: string;
+  profileLastName?: string;
+  paymentMethods: PaymentMethod[];
+}) {
   const [amount, setAmount] = useState(10);
   const [step, setStep] = useState<"amount" | "checkout">("amount");
+  const [paymentMethodId, setPaymentMethodId] = useState(paymentMethods[0]?.id ?? "");
   const [billing, setBilling] = useState<Billing>({
     ...EMPTY_BILLING,
     firstName: profileFirstName ?? "",
@@ -46,7 +61,7 @@ export function DepositForm({ profileFirstName, profileLastName }: { profileFirs
   const points = amount * 100;
   const requiresWaiver = EU_UK_COUNTRIES.has(billing.country);
   const billingComplete = Object.values(billing).every((v) => v.trim().length > 0);
-  const canPay = billingComplete && termsAgreed && (!requiresWaiver || agreed);
+  const canPay = billingComplete && termsAgreed && !!paymentMethodId && (!requiresWaiver || agreed);
 
   function updateBilling<K extends keyof Billing>(key: K, value: string) {
     setBilling((b) => ({ ...b, [key]: value }));
@@ -58,7 +73,7 @@ export function DepositForm({ profileFirstName, profileLastName }: { profileFirs
     const res = await fetch("/api/deposit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ eurAmount: amount, billing }),
+      body: JSON.stringify({ eurAmount: amount, billing, paymentMethodId }),
     });
     const body = await res.json();
     setLoading(false);
@@ -133,7 +148,43 @@ export function DepositForm({ profileFirstName, profileLastName }: { profileFirs
           full card details — every transaction is tokenized and handled in compliance with PCI-DSS
           standards. You&apos;ll be redirected to a secure page to enter your card information.
         </p>
-        <p className="mt-2">Card statement descriptor: <span className="text-zinc-400">—</span></p>
+        <p className="mt-2">Card statement descriptor: <span className="text-zinc-400">Ironmax Lithuania, UAB</span></p>
+      </div>
+
+      <div className="border-t border-zinc-800 pt-4">
+        <h3 className="text-sm font-semibold text-white mb-2">Payment method</h3>
+        {paymentMethods.length > 0 ? (
+          <div className="grid gap-2">
+            {paymentMethods.map((method) => (
+              <label
+                key={method.id}
+                className={`flex items-center gap-3 rounded border px-3 py-2 cursor-pointer ${
+                  paymentMethodId === method.id ? "border-amber-500 bg-amber-500/10" : "border-zinc-800 bg-zinc-950"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={method.id}
+                  checked={paymentMethodId === method.id}
+                  onChange={() => setPaymentMethodId(method.id)}
+                  className="w-4 h-4 accent-amber-500"
+                />
+                {method.imageUrl ? (
+                  <span
+                    className="h-8 w-12 rounded bg-white/5 bg-contain bg-center bg-no-repeat"
+                    style={{ backgroundImage: `url("${method.imageUrl}")` }}
+                  />
+                ) : (
+                  <span className="h-8 w-12 rounded bg-zinc-800" />
+                )}
+                <span className="text-sm text-zinc-100">{method.name}</span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-red-400">No active payment methods are configured yet.</p>
+        )}
       </div>
 
       {/* Digital goods waiver — only a required disclosure for EU/UK consumers */}
@@ -181,7 +232,7 @@ export function DepositForm({ profileFirstName, profileLastName }: { profileFirs
 
       <button onClick={onDeposit} disabled={loading || !canPay}
         className="w-full rounded bg-amber-500 text-zinc-950 font-semibold py-2.5 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed">
-        {loading ? "Redirecting..." : "Pay with PayNet Easy"}
+        {loading ? "Redirecting..." : "Pay with selected method"}
       </button>
     </div>
   );

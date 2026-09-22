@@ -6,6 +6,7 @@ import { AdminAddUserForm } from "./AdminAddUserForm";
 import { AdminAddDepositForm } from "./AdminAddDepositForm";
 import { AdminDepositRow } from "./AdminDepositRow";
 import { MailSettingsForm } from "./MailSettingsForm";
+import { PaymentMethodsForm } from "./PaymentMethodsForm";
 
 export default async function AdminPage() {
   if (!(await requireAdmin())) redirect("/");
@@ -59,6 +60,11 @@ export default async function AdminPage() {
             firstName: u.firstName ?? "", lastName: u.lastName ?? "", billingAddress: u.billingAddress ?? "",
           }} />
         ))}
+      </div>
+
+      <h2 className="text-lg font-semibold mb-3">Payment methods</h2>
+      <div className="mb-10">
+        <PaymentMethodsForm />
       </div>
 
       <h2 className="text-lg font-semibold mb-3">Outgoing email</h2>

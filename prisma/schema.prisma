@@ -60,6 +60,8 @@ model Transaction {
   id             String     @id @default(cuid())
   userId         String
   user           User       @relation(fields: [userId], references: [id])
+  paymentMethodId String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
   type           TxType
   status         TxStatus   @default(COMPLETED)
   coinsDelta     Int
@@ -76,6 +78,20 @@ model Transaction {
   billingAddress String?
 
   invoice        Invoice?
+}
+
+model PaymentMethod {
+  id              String        @id @default(cuid())
+  name            String
+  imageUrl        String?
+  paynetApiUrl    String?
+  paynetEndpointId String
+  paynetSigningKey String
+  active          Boolean       @default(true)
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  transactions    Transaction[]
 }
 
 model Invoice {

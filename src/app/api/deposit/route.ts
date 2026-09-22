@@ -7,6 +7,7 @@ import { createPaynetPayment } from "@/lib/paynet";
 const COINS_PER_EUR = 100;
 const schema = z.object({
   eurAmount: z.number().positive().max(1000),
+  paymentMethodId: z.string().min(1),
   billing: z.object({
     firstName: z.string(), lastName: z.string(),
     street: z.string(), city: z.string(), postalCode: z.string(), country: z.string(),
@@ -25,9 +26,15 @@ export async function POST(req: Request) {
   const coins = Math.round(parsed.data.eurAmount * COINS_PER_EUR);
   const { billing } = parsed.data;
 
+  const paymentMethod = await prisma.paymentMethod.findFirst({
+    where: { id: parsed.data.paymentMethodId, active: true },
+  });
+  if (!paymentMethod) return NextResponse.json({ error: "Payment method is unavailable" }, { status: 400 });
+
   const pending = await prisma.transaction.create({
     data: {
       userId, type: "DEPOSIT", status: "PENDING",
+      paymentMethodId: paymentMethod.id,
       coinsDelta: coins, eurAmount: parsed.data.eurAmount,
       billingName: billing ? `${billing.firstName} ${billing.lastName}`.trim() : null,
       billingPhone: billing?.phone ?? null,
@@ -35,17 +42,26 @@ export async function POST(req: Request) {
     },
   });
 
-  const payment = await createPaynetPayment({
-    orderId: pending.id,
-    amountEur: parsed.data.eurAmount,
-    customerEmail: session.user.email!,
-    returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/account?deposit=pending`,
-  });
+  try {
+    const payment = await createPaynetPayment({
+      orderId: pending.id,
+      amountEur: parsed.data.eurAmount,
+      customerEmail: session.user.email!,
+      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/account?deposit=pending`,
+      credentials: paymentMethod,
+    });
 
-  await prisma.transaction.update({
-    where: { id: pending.id },
-    data: { paynetOrderId: payment.payment_id },
-  });
+    await prisma.transaction.update({
+      where: { id: pending.id },
+      data: { paynetOrderId: payment.payment_id },
+    });
 
-  return NextResponse.json({ paymentUrl: payment.payment_url });
+    return NextResponse.json({ paymentUrl: payment.payment_url });
+  } catch (error) {
+    await prisma.transaction.update({
+      where: { id: pending.id },
+      data: { status: "FAILED", note: error instanceof Error ? error.message : "PayNet Easy payment creation failed" },
+    });
+    return NextResponse.json({ error: "Payment provider error" }, { status: 502 });
+  }
 }

@@ -9,7 +9,7 @@ export default async function AccountPage() {
   const session = await auth();
   const userId = (session!.user as { id: string }).id;
 
-  const [wallet, transactions, orders, user] = await Promise.all([
+  const [wallet, transactions, orders, user, paymentMethods] = await Promise.all([
     prisma.wallet.findUnique({ where: { userId } }),
     prisma.transaction.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 30 }),
     prisma.transaction.findMany({
@@ -18,6 +18,11 @@ export default async function AccountPage() {
       include: { invoice: true },
     }),
     prisma.user.findUnique({ where: { id: userId } }),
+    prisma.paymentMethod.findMany({
+      where: { active: true },
+      select: { id: true, name: true, imageUrl: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    }),
   ]);
 
   const overview = (
@@ -31,7 +36,15 @@ export default async function AccountPage() {
         <div className="text-xs uppercase tracking-wide text-zinc-500">Points</div>
         <div className="text-3xl font-extrabold text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.5)]">{wallet?.coins ?? 0}</div>
       </div>
-      <DepositForm profileFirstName={user?.firstName ?? ""} profileLastName={user?.lastName ?? ""} />
+      <DepositForm
+        profileFirstName={user?.firstName ?? ""}
+        profileLastName={user?.lastName ?? ""}
+        paymentMethods={paymentMethods.map((method) => ({
+          id: method.id,
+          name: method.name,
+          imageUrl: method.imageUrl ?? "",
+        }))}
+      />
     </div>
   );
 

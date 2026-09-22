@@ -4,11 +4,16 @@ import crypto from "crypto";
 // pattern (end-point-id + signing key, HMAC-signed requests). Confirm exact field names against
 // your PayNet Easy merchant dashboard/API docs before going live — plug real values into .env.
 const PAYNET_API_URL = process.env.PAYNET_API_URL ?? "https://api.paynet.easy";
-const PAYNET_END_POINT_ID = process.env.PAYNET_END_POINT_ID ?? "";
 const PAYNET_SIGNING_KEY = process.env.PAYNET_SIGNING_KEY ?? "";
 
-function sign(payload: string) {
-  return crypto.createHmac("sha256", PAYNET_SIGNING_KEY).update(payload).digest("hex");
+type PaynetCredentials = {
+  paynetApiUrl?: string | null;
+  paynetEndpointId: string;
+  paynetSigningKey: string;
+};
+
+function sign(payload: string, signingKey: string) {
+  return crypto.createHmac("sha256", signingKey).update(payload).digest("hex");
 }
 
 export async function createPaynetPayment(opts: {
@@ -16,9 +21,10 @@ export async function createPaynetPayment(opts: {
   amountEur: number;
   customerEmail: string;
   returnUrl: string;
+  credentials: PaynetCredentials;
 }) {
   const payload = {
-    end_point_id: PAYNET_END_POINT_ID,
+    end_point_id: opts.credentials.paynetEndpointId,
     order_id: opts.orderId,
     amount: opts.amountEur.toFixed(2),
     currency: "EUR",
@@ -26,9 +32,10 @@ export async function createPaynetPayment(opts: {
     return_url: opts.returnUrl,
   };
   const body = JSON.stringify(payload);
-  const res = await fetch(`${PAYNET_API_URL}/v1/payments`, {
+  const apiUrl = opts.credentials.paynetApiUrl?.trim() || PAYNET_API_URL;
+  const res = await fetch(`${apiUrl}/v1/payments`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Signature": sign(body) },
+    headers: { "Content-Type": "application/json", "X-Signature": sign(body, opts.credentials.paynetSigningKey) },
     body,
   });
   if (!res.ok) throw new Error(`PayNet Easy error: ${res.status} ${await res.text()}`);
@@ -36,8 +43,11 @@ export async function createPaynetPayment(opts: {
 }
 
 /** Verifies the HMAC signature PayNet Easy sends on the deposit-confirmed webhook. */
-export function verifyPaynetWebhook(rawBody: string, signatureHeader: string | null) {
+export function verifyPaynetWebhook(rawBody: string, signatureHeader: string | null, signingKey = PAYNET_SIGNING_KEY) {
   if (!signatureHeader) return false;
-  const expected = sign(rawBody);
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureHeader));
+  const expected = sign(rawBody, signingKey);
+  const expectedBuffer = Buffer.from(expected);
+  const signatureBuffer = Buffer.from(signatureHeader);
+  if (expectedBuffer.length !== signatureBuffer.length) return false;
+  return crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
 }
