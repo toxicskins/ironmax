@@ -9,11 +9,17 @@ const schema = z.object({
   eurAmount: z.number().positive().max(1000),
   paymentMethodId: z.string().min(1),
   billing: z.object({
-    firstName: z.string(), lastName: z.string(),
-    street: z.string(), city: z.string(), postalCode: z.string(), country: z.string(),
-    phone: z.string(),
+    firstName: z.string().min(1), lastName: z.string().min(1),
+    street: z.string().min(1), city: z.string().min(1), postalCode: z.string().min(1), country: z.string().min(1),
+    phone: z.string().min(1),
   }).optional(),
 });
+
+function requestIp(req: Request) {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || req.headers.get("x-real-ip")
+    || "127.0.0.1";
+}
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -48,6 +54,8 @@ export async function POST(req: Request) {
       amountEur: parsed.data.eurAmount,
       customerEmail: session.user.email!,
       returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/account?deposit=pending`,
+      ipAddress: requestIp(req),
+      billing,
       credentials: paymentMethod,
     });
 

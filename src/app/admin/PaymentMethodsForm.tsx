@@ -6,6 +6,7 @@ type PaymentMethod = {
   name: string;
   imageUrl: string;
   paynetApiUrl: string;
+  paynetLogin: string;
   paynetEndpointId: string;
   active: boolean;
   sortOrder: number;
@@ -18,6 +19,7 @@ const EMPTY_METHOD: PaymentMethod = {
   name: "",
   imageUrl: "",
   paynetApiUrl: "",
+  paynetLogin: "",
   paynetEndpointId: "",
   active: true,
   sortOrder: 0,
@@ -54,6 +56,7 @@ export function PaymentMethodsForm() {
         name: method.name,
         imageUrl: method.imageUrl,
         paynetApiUrl: method.paynetApiUrl,
+        paynetLogin: method.paynetLogin,
         paynetEndpointId: method.paynetEndpointId,
         paynetSigningKey: method.paynetSigningKey ?? "",
         active: method.active,
@@ -113,13 +116,15 @@ export function PaymentMethodsForm() {
                 className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm" />
               <input placeholder="Image URL" value={method.imageUrl} onChange={(e) => updateMethod(method.id, "imageUrl", e.target.value)}
                 className="col-span-2 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm" />
-              <input placeholder="PayNet API URL (optional)" value={method.paynetApiUrl} onChange={(e) => updateMethod(method.id, "paynetApiUrl", e.target.value)}
+              <input placeholder="PayNetEasy API v2 URL" value={method.paynetApiUrl} onChange={(e) => updateMethod(method.id, "paynetApiUrl", e.target.value)}
                 className="col-span-2 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm" />
-              <input placeholder="PayNet endpoint id" value={method.paynetEndpointId} onChange={(e) => updateMethod(method.id, "paynetEndpointId", e.target.value)}
+              <input placeholder="Login" value={method.paynetLogin} onChange={(e) => updateMethod(method.id, "paynetLogin", e.target.value)}
                 className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm" />
-              <input type="password" placeholder={method.configured ? "New signing key (leave blank to keep current)" : "Signing key"}
+              <input placeholder="EndpointGroupID" value={method.paynetEndpointId} onChange={(e) => updateMethod(method.id, "paynetEndpointId", e.target.value)}
+                className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm" />
+              <input type="password" placeholder={method.configured ? "New control key (leave blank to keep current)" : "Control key"}
                 value={method.paynetSigningKey ?? ""} onChange={(e) => updateMethod(method.id, "paynetSigningKey", e.target.value)}
-                className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm" />
+                className="col-span-2 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm" />
             </div>
             <div className="flex items-center gap-3 mt-3">
               <label className="flex items-center gap-2 text-sm text-zinc-400">
@@ -151,11 +156,13 @@ export function PaymentMethodsForm() {
             className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
           <input placeholder="Image URL" value={draft.imageUrl} onChange={(e) => setDraft((m) => ({ ...m, imageUrl: e.target.value }))}
             className="col-span-2 rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-          <input placeholder="PayNet API URL (optional)" value={draft.paynetApiUrl} onChange={(e) => setDraft((m) => ({ ...m, paynetApiUrl: e.target.value }))}
+          <input placeholder="PayNetEasy API v2 URL" value={draft.paynetApiUrl} onChange={(e) => setDraft((m) => ({ ...m, paynetApiUrl: e.target.value }))}
             className="col-span-2 rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-          <input placeholder="PayNet endpoint id" value={draft.paynetEndpointId} onChange={(e) => setDraft((m) => ({ ...m, paynetEndpointId: e.target.value }))}
+          <input placeholder="Login" value={draft.paynetLogin} onChange={(e) => setDraft((m) => ({ ...m, paynetLogin: e.target.value }))}
             className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-          <input type="password" placeholder="Signing key" value={draft.paynetSigningKey ?? ""} onChange={(e) => setDraft((m) => ({ ...m, paynetSigningKey: e.target.value }))}
+          <input placeholder="EndpointGroupID" value={draft.paynetEndpointId} onChange={(e) => setDraft((m) => ({ ...m, paynetEndpointId: e.target.value }))}
+            className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+          <input type="password" placeholder="Control key" value={draft.paynetSigningKey ?? ""} onChange={(e) => setDraft((m) => ({ ...m, paynetSigningKey: e.target.value }))}
             className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
         </div>
         <div className="flex items-center gap-3 mt-3">

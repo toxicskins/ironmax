@@ -85,6 +85,7 @@ model PaymentMethod {
   name            String
   imageUrl        String?
   paynetApiUrl    String?
+  paynetLogin     String?
   paynetEndpointId String
   paynetSigningKey String
   active          Boolean       @default(true)
