@@ -61,13 +61,26 @@ export function DepositForm({
   const points = amount * 100;
   const requiresWaiver = EU_UK_COUNTRIES.has(billing.country);
   const billingComplete = Object.values(billing).every((v) => v.trim().length > 0);
-  const canPay = billingComplete && termsAgreed && !!paymentMethodId && (!requiresWaiver || agreed);
+  const paymentBlocker = !billingComplete
+    ? "Please complete all billing details, including country."
+    : !paymentMethodId
+      ? "Please select a payment method."
+      : !termsAgreed
+        ? "Please agree to the Terms and Privacy Policy."
+        : requiresWaiver && !agreed
+          ? "Please confirm the digital goods waiver."
+          : null;
 
   function updateBilling<K extends keyof Billing>(key: K, value: string) {
     setBilling((b) => ({ ...b, [key]: value }));
   }
 
   async function onDeposit() {
+    if (paymentBlocker) {
+      setError(paymentBlocker);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const res = await fetch("/api/deposit", {
@@ -120,7 +133,9 @@ export function DepositForm({
           <input placeholder="Postal code" value={billing.postalCode} onChange={(e) => updateBilling("postalCode", e.target.value)}
             className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
           <select value={billing.country} onChange={(e) => updateBilling("country", e.target.value)}
-            className="col-span-2 rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100">
+            className={`col-span-2 rounded border bg-zinc-950 px-3 py-2 text-sm text-zinc-100 ${
+              error && !billing.country ? "border-red-500" : "border-zinc-700"
+            }`}>
             <option value="" disabled>Country</option>
             {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -230,7 +245,7 @@ export function DepositForm({
 
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
-      <button onClick={onDeposit} disabled={loading || !canPay}
+      <button onClick={onDeposit} disabled={loading}
         className="w-full rounded bg-amber-500 text-zinc-950 font-semibold py-2.5 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed">
         {loading ? "Redirecting..." : "Pay with selected method"}
       </button>
