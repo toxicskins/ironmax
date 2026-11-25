@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { PaymentBadges } from "../PaymentBadges";
 
 type Billing = {
   firstName: string; lastName: string;
@@ -150,8 +151,10 @@ export function DepositForm({
         <p>
           Points are a virtual in-platform balance used only to play games on IRONMAX. Points have no cash
           value, cannot be exchanged for money, transferred to another account, or withdrawn under any
-          circumstance. Purchased points are non-refundable once credited, except where required by
-          applicable law. Points already in your account remain available until spent.
+          circumstance. Points are credited instantly after payment. Undelivered Points, duplicate charges
+          and fully unused purchases (within 14 days) can be refunded to your card — see the{" "}
+          <Link href="/refund-policy" className="text-amber-400 hover:underline">Refund Policy</Link> and{" "}
+          <Link href="/delivery-policy" className="text-amber-400 hover:underline">Delivery Policy</Link>.
         </p>
       </div>
 
@@ -159,11 +162,15 @@ export function DepositForm({
       <div className="text-xs text-zinc-500 leading-relaxed border-t border-zinc-800 pt-4">
         <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wide mb-1">Payment system — PayNet Easy</h4>
         <p>
-          Pay securely using your credit card. Payments are processed by PayNet Easy. We do not store your
-          full card details — every transaction is tokenized and handled in compliance with PCI-DSS
-          standards. You&apos;ll be redirected to a secure page to enter your card information.
+          Pay securely with a Visa or Mastercard card, in euro (EUR). Payments are processed by PayNet Easy
+          on a PCI DSS compliant page and verified with 3-D Secure. We do not store your card details.
+          You&apos;ll be redirected to a secure page to enter your card information.
         </p>
-        <p className="mt-2">Card statement descriptor: <span className="text-zinc-400">Ironmax Lithuania, UAB</span></p>
+        <p className="mt-2">
+          Merchant: <span className="text-zinc-400">Ironmax Lithuania, UAB, Vilnius, Lithuania</span>. Card
+          statement descriptor: <span className="text-zinc-400">Ironmax Lithuania, UAB</span>
+        </p>
+        <PaymentBadges className="mt-3" />
       </div>
 
       <div className="border-t border-zinc-800 pt-4">

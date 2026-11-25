@@ -226,10 +226,10 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "roulette", name: "European Roulette", category: "wheel", minStake: 1, maxStake: 1000,
-    description: "37-pocket wheel (0–36). Bet red, black, or green — no single-number bets.",
+    description: "37-pocket wheel (0–36). Pick red, black, or green — no single-number picks.",
     rules: [
-      "Bet red or black: win if the ball lands on that color (18/37 chance, ~48.6%) — pays 2x",
-      "Bet green (0): win only if the ball lands on 0 (1/37 chance) — pays 35.5x",
+      "Pick red or black: win if the ball lands on that color (18/37 chance, ~48.6%) — pays 2x",
+      "Pick green (0): win only if the ball lands on 0 (1/37 chance) — pays 35.5x",
       "Any other result: lose your stake",
     ],
     play: (next, params) => {
@@ -411,17 +411,17 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "baccarat", name: "Baccarat", category: "cards", minStake: 1, maxStake: 500,
-    description: "You see your own 2 cards first — the Banker's stay face down until after you've placed your bet.",
+    description: "You see your own 2 cards first — the Banker's stay face down until after you've made your pick.",
     rules: [
       "Goal: guess which side — Player or Banker — ends up closer to 9",
       "Card totals drop the tens digit: 4+8=12 counts as 2, 3+9+8=20 counts as 0",
-      "Your 2 cards are dealt and shown first; the Banker's 2 stay hidden until you bet",
-      "Bet Player, Banker, or Tie, then both hands are revealed and resolved",
+      "Your 2 cards are dealt and shown first; the Banker's 2 stay hidden until you pick",
+      "Pick Player, Banker, or Tie, then both hands are revealed and resolved",
       "Every hand is exactly 2 cards a side — no 3rd-card draw",
-      "Player wins and you bet Player: 2.13x your stake",
-      "Banker wins and you bet Banker: 2.13x your stake",
-      "Tie and you bet Tie: 9.7x your stake",
-      "Wrong bet: lose your stake",
+      "Player wins and you picked Player: 2.13x your stake",
+      "Banker wins and you picked Banker: 2.13x your stake",
+      "Tie and you picked Tie: 9.7x your stake",
+      "Wrong pick: lose your stake",
     ],
     // This entry's `play` is unused for actual bets — Baccarat is interactive (your 2 cards are
     // shown before the Banker's, then you bet) via /api/games/baccarat/{start,pick}, which need
@@ -471,13 +471,13 @@ export const GAMES: GameDef[] = [
   },
   {
     key: "sic-bo", name: "Dice Roll", category: "dice", minStake: 1, maxStake: 500,
-    description: "Three dice roll. Pick a bet — Small/Big, Odd/Even, or call a specific triple for a long-shot jackpot.",
+    description: "Three dice roll. Pick an outcome — Small/Big, Odd/Even, or call a specific triple for a long-shot jackpot.",
     rules: [
       "Small (4-10) or Big (11-17): win 2x — any triple busts both",
       "Odd or Even total: win 2x — any triple busts both",
       "Any triple (three of a kind, any number): win 34.5x",
       "A specific triple you call (e.g. all 4s): win 207x",
-      "Bet condition not met: lose your stake",
+      "Pick not matched: lose your stake",
     ],
     // Genuinely random combinatorics (216 outcomes of 3d6), not a hand-tuned probability —
     // each bet's payout is 0.96 / (its real win chance), so the RTP falls out of the dice math.

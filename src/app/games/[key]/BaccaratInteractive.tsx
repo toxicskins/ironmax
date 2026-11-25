@@ -83,7 +83,7 @@ export function BaccaratInteractive({ minStake, maxStake, initialCoins }: {
     });
     const body = await res.json();
     setLoading(false);
-    if (!res.ok) { setError(body.error ?? "Bet failed"); return; }
+    if (!res.ok) { setError(body.error ?? "Round failed"); return; }
     setPlayer(body.player);
     setBanker(body.banker);
     setPv(body.pv);
