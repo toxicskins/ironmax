@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { auth } from "@/auth";
 import { GAMES } from "@/lib/games/registry";
 import { GamePreview } from "./games/GamePreview";
@@ -17,14 +18,14 @@ const STEPS = [
 
 const TRUST = [
   { icon: "🎰", title: `${GAMES.length} games`, body: "Slots, table games, wheels — one lobby." },
-  { icon: "🔒", title: "Provably fair", body: "Every bet is seed-verifiable, no black box." },
+  { icon: "🔒", title: "Provably fair", body: "Every game round is seed-verifiable, no black box." },
   { icon: "⚡", title: "Instant results", body: "No waiting, no withdrawal delays — it's just for fun." },
   { icon: "📋", title: "Clear paytables", body: "Every game shows its exact rules and payouts up front." },
 ];
 
 const HERO_STATS = [
   { value: String(GAMES.length), label: "games" },
-  { value: "96%", label: "avg. RTP" },
+  { value: "€0", label: "cash prizes — just for fun" },
   { value: "24/7", label: "instant play" },
 ];
 
@@ -41,7 +42,9 @@ function GameTile({ g }: { g: { key: string; name: string; category: string } })
       <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
       <div className="absolute bottom-0 left-0 right-0 p-3">
         <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{CATEGORY_LABEL[g.category] ?? g.category}</div>
+        {"\n"}
         <div className="font-extrabold text-white text-base leading-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">{g.name}</div>
+        {"\n"}
       </div>
       <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <span className="rounded-full bg-gradient-to-b from-amber-400 to-amber-600 text-zinc-950 font-extrabold text-sm px-5 py-2 shadow-[0_0_24px_-2px_rgba(245,158,11,0.9)]">
@@ -66,8 +69,15 @@ export default async function Home() {
       {/* Jackpot ticker — a scrolling marquee strip like a real casino lobby sign */}
       <div className="relative overflow-hidden border-b border-amber-500/20 bg-gradient-to-r from-zinc-950 via-amber-950/40 to-zinc-950 py-2">
         <div className="flex whitespace-nowrap ticker-track">
+          {/* The second copy only makes the marquee loop seamlessly, so it is hidden from readers.
+              The whitespace text node is not rendered in the flex row but keeps names apart in
+              raw text. */}
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-            <span key={i} className="mx-6 text-xs font-semibold tracking-wide text-amber-300/90">{item}</span>
+            <Fragment key={i}>
+              <span aria-hidden={i >= TICKER_ITEMS.length || undefined}
+                className="mx-6 text-xs font-semibold tracking-wide text-amber-300/90">{item}</span>
+              {"\n"}
+            </Fragment>
           ))}
         </div>
       </div>

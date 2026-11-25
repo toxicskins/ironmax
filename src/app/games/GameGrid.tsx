@@ -65,7 +65,9 @@ export function GameGrid({ games }: { games: GameSummary[] }) {
               <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
               <div className="absolute bottom-0 left-0 right-0 p-3">
                 <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{CATEGORY_LABEL[g.category] ?? g.category}</div>
+                {"\n"}
                 <div className="font-extrabold text-white text-base leading-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">{g.name}</div>
+                {"\n"}
               </div>
 
               {/* hover-only PLAY pill for a punchy call to action */}

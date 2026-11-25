@@ -120,7 +120,7 @@ export function GamePlayer({
     });
     const body = await res.json();
     setLoading(false);
-    if (!res.ok) { setError(body.error ?? "Bet failed"); return; }
+    if (!res.ok) { setError(body.error ?? "Round failed"); return; }
     setResult(body);
     if (manualReveal) return;
 

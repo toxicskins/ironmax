@@ -1,204 +1,179 @@
-import { COMPANY } from "@/lib/company";
+import Link from "next/link";
+import { COMPANY, PRICING, PROHIBITED_COUNTRIES } from "@/lib/company";
+import { LegalPage, Section, List, linkCls } from "../LegalPage";
 
 export const metadata = { title: "Terms of Service — IRONMAX" };
 
 export default function TermsPage() {
+  const operator = <strong>{COMPANY.legalName}</strong>;
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12 prose-invert">
-      <h1 className="text-3xl font-extrabold mb-2">Terms of Service</h1>
-      <p className="text-sm text-zinc-500 mb-8">Last updated 2026</p>
+    <LegalPage title="Terms of Service">
+      <Section title="1. About IRONMAX and the operator">
+        <p>
+          IRONMAX is a social casino: an entertainment platform where you play casino-style games with
+          Points. The platform is operated by {operator}, a private limited company registered in the
+          Republic of Lithuania under registration No. {COMPANY.registerCode}, with its registered
+          address at {COMPANY.address}, Lithuania, email{" "}
+          <a href={`mailto:${COMPANY.email}`} className={linkCls}>{COMPANY.email}</a> (&quot;we&quot;,
+          &quot;us&quot;, the &quot;Company&quot;).
+        </p>
+        <p>
+          <strong>IRONMAX is not a gambling service.</strong> Points have no cash value and can never be
+          withdrawn, redeemed, exchanged or cashed out, whatever the balance. You cannot win money or
+          anything of monetary value. What you pay for is the entertainment of playing.
+        </p>
+        <p>
+          By creating an account or buying Points you agree to these Terms, our{" "}
+          <Link href="/privacy" className={linkCls}>Privacy Policy</Link>,{" "}
+          <Link href="/refund-policy" className={linkCls}>Refund Policy</Link> and{" "}
+          <Link href="/delivery-policy" className={linkCls}>Delivery Policy</Link>. If you do not agree,
+          do not use IRONMAX.
+        </p>
+      </Section>
 
-      <div className="flex flex-col gap-6 text-zinc-300 text-sm leading-relaxed">
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">1. About IRONMAX</h2>
-          <p>
-            IRONMAX is a social casino: a game-for-fun entertainment platform operated by{" "}
-            <strong>—</strong> ("we", "us", "our", the "Company"). IRONMAX lets customers play
-            casino-style games using Points. Points have <strong>no cash value</strong> and cannot
-            be withdrawn, redeemed, exchanged, or cashed out under any circumstance, regardless of
-            balance. IRONMAX is entertainment software and does not offer real-money gambling,
-            wagering, or betting services. By creating an account or using IRONMAX, you agree to
-            be bound by these Terms of Service ("Terms"). If you do not agree, do not use the
-            platform.
-          </p>
-        </section>
+      <Section title="2. Eligibility and prohibited countries">
+        <p>
+          You must be at least 18 years old, or the age of majority in your country if higher. You
+          confirm that using IRONMAX is lawful where you live and that the information you give us is
+          accurate. We may ask for proof of age or identity and may restrict accounts that cannot be
+          verified.
+        </p>
+        <p>IRONMAX is not available to residents of, or people located in:</p>
+        <List>
+          {PROHIBITED_COUNTRIES.map((c) => <li key={c}>{c};</li>)}
+          <li>any other country or territory subject to comprehensive EU, UN or US sanctions, or where social casino games or the purchase of virtual currency for them is prohibited.</li>
+        </List>
+        <p>Accounts opened from these locations, including through a VPN, may be closed and purchases refunded.</p>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">2. Eligibility</h2>
-          <p>
-            You must be at least 18 years old, or the age of majority in your jurisdiction if
-            higher, to create an account or make a purchase on IRONMAX. By using IRONMAX you
-            represent and warrant that you meet this requirement, that you are legally permitted
-            to use the platform under the laws applicable to you, and that all information you
-            provide during registration is accurate and complete. We may request proof of age or
-            identity at any time and may restrict or close accounts where eligibility cannot be
-            verified.
-          </p>
-        </section>
+      <Section title="3. Accounts">
+        <p>
+          One account per person. Keep your login details confidential; you are responsible for activity
+          on your account. Tell us immediately if you suspect unauthorised access.
+        </p>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">3. Accounts</h2>
-          <p>
-            You may only maintain one account per person. You are responsible for keeping your
-            login credentials confidential and for all activity that occurs under your account,
-            whether or not authorized by you. Notify us immediately if you suspect unauthorized
-            access, a compromised password, or any other security breach. We are not liable for
-            losses arising from your failure to safeguard your account credentials.
-          </p>
-        </section>
+      <Section title="4. Points, prices and payments">
+        <List>
+          <li>Points are sold at a fixed rate of {PRICING.pointsPerEur} Points = €1.00, in amounts from €{PRICING.minEur} to €{PRICING.maxEur} per purchase. Current prices are on the <Link href="/pricing" className={linkCls}>Pricing page</Link> and the total is shown in the order summary before you pay.</li>
+          <li><strong>Accepted currency:</strong> euro (EUR) only. Your bank may charge conversion fees if your card is in another currency.</li>
+          <li><strong>Payment methods:</strong> Visa and Mastercard credit and debit cards, and any other method shown at checkout. Payments are processed by PayNet Easy on a PCI DSS compliant payment page and are authenticated with 3-D Secure.</li>
+          <li>Your card statement shows &quot;{COMPANY.legalName}&quot;.</li>
+          <li>Points are not money, electronic money, cryptocurrency, a deposit or stored value. They cannot be transferred, sold or traded between users and can be used only to play games on IRONMAX.</li>
+          <li>Buying Points does not open a bank, payment or e-money account with the Company.</li>
+          <li>Points may not be bought or used for resale, money transmission, arbitrage or any other commercial purpose.</li>
+        </List>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">4. Fair play &amp; game outcomes</h2>
-          <p>
-            Every bet outcome on IRONMAX is generated from a server seed and a client seed
-            combined via HMAC-SHA256, so results can be independently verified after the fact.
-            Games are configured to a fixed, published return-to-player rate over the long run;
-            individual sessions may vary. Attempting to exploit, probe, reverse-engineer, or
-            manipulate the random number generation, game logic, or payout mechanics is a breach
-            of these Terms and may result in immediate suspension, forfeiture of Points, and
-            account closure.
-          </p>
-        </section>
+      <Section title="5. Delivery of Points">
+        <p>
+          Points are credited to your account automatically, normally within seconds and at most within
+          30 minutes of the payment being confirmed. Details are in the{" "}
+          <Link href="/delivery-policy" className={linkCls}>Delivery Policy</Link>.
+        </p>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">5. Prohibited conduct</h2>
-          <p>You agree not to, and not to attempt to:</p>
-          <ul className="list-disc pl-5 mt-2 flex flex-col gap-1">
-            <li>create or control multiple accounts, or use another person's account;</li>
-            <li>use bots, scripts, automation, or any tool to interact with the platform;</li>
-            <li>exploit bugs, glitches, or misconfigurations instead of reporting them;</li>
-            <li>use IRONMAX for money laundering, fraud, or any unlawful purpose;</li>
-            <li>reverse-engineer, decompile, or scrape the platform or its game logic;</li>
-            <li>interfere with the platform's operation, security, or other users' access;</li>
-            <li>misrepresent your identity, age, or payment information.</li>
-          </ul>
-          <p className="mt-2">
-            Violation of this section may result in suspension or termination of your account and
-            forfeiture of Points under Section 8.
-          </p>
-        </section>
+      <Section title="6. Refunds and right of withdrawal">
+        <p>
+          Points are digital content delivered immediately at your request. At checkout you agree to
+          immediate delivery and acknowledge that you lose the 14-day right of withdrawal once delivery
+          begins. You can still get a refund for Points that were not delivered, for duplicate or
+          incorrect charges, and for purchases whose Points are completely unused within 14 days. Refunds
+          are paid to the original card within 5 business days of approval. The full process is in the{" "}
+          <Link href="/refund-policy" className={linkCls}>Refund Policy</Link>.
+        </p>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">6. Intellectual property</h2>
-          <p>
-            All software, graphics, game designs, text, logos, and other content on IRONMAX are
-            owned by or licensed to the Company and are protected by intellectual property laws.
-            You are granted a limited, personal, non-exclusive, non-transferable license to access
-            and use IRONMAX for your own entertainment. You may not copy, modify, distribute,
-            sell, or create derivative works from any part of the platform without our prior
-            written consent.
-          </p>
-        </section>
+      <Section title="7. Games and fair play">
+        <p>
+          Each game round costs the number of Points you choose and may award more Points according to
+          the rules and prize table shown in the game. Prizes are only ever Points. Round results are
+          generated from a server seed and a client seed combined with HMAC-SHA256, so they can be
+          verified afterwards. Trying to exploit, probe or manipulate the random number generation or
+          game logic breaches these Terms.
+        </p>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">7. Disclaimers &amp; limitation of liability</h2>
-          <p>
-            IRONMAX is provided "as is" and "as available" without warranties of any kind, express
-            or implied, including fitness for a particular purpose, non-infringement, or
-            uninterrupted, error-free operation. To the maximum extent permitted by applicable
-            law, the Company shall not be liable for any indirect, incidental, special,
-            consequential, or punitive damages, or for any loss of data, goodwill, or Points
-            arising from your use of, or inability to use, IRONMAX. Nothing in these Terms limits
-            liability that cannot lawfully be excluded, such as liability for fraud or death or
-            personal injury caused by negligence.
-          </p>
-        </section>
+      <Section title="8. Prohibited conduct">
+        <p>You agree not to:</p>
+        <List>
+          <li>create or control several accounts, or use someone else&apos;s account;</li>
+          <li>use bots, scripts or other automation;</li>
+          <li>exploit bugs instead of reporting them;</li>
+          <li>use IRONMAX for money laundering, fraud or any unlawful purpose;</li>
+          <li>reverse-engineer, decompile or scrape the platform;</li>
+          <li>interfere with the platform&apos;s operation or security;</li>
+          <li>misrepresent your identity, age, location or payment details.</li>
+        </List>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">8. Suspension &amp; termination</h2>
-          <p>
-            We may suspend, restrict, or close any account, at our discretion, where we
-            reasonably believe these Terms have been violated, where fraud, abuse, chargebacks, or
-            unlawful activity is suspected, or where required by law or a payment provider. Points
-            forfeited on closure for cause have no cash value and no refund is owed. You may close
-            your account at any time by contacting us; any unused Points will be forfeited on
-            voluntary closure, subject to applicable law.
-          </p>
-        </section>
+      <Section title="9. Intellectual property">
+        <p>
+          All software, graphics, game designs, text and logos on IRONMAX belong to or are licensed to the
+          Company. You get a personal, non-transferable licence to use IRONMAX for your own entertainment.
+        </p>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">9. Governing law &amp; disputes</h2>
-          <p>
-            These Terms are governed by the laws applicable to the Company's place of
-            registration, without regard to conflict-of-law principles, except where mandatory
-            consumer-protection law in your country of residence provides otherwise. Any dispute
-            arising from these Terms or your use of IRONMAX shall first be addressed through good-
-            faith negotiation with our support team before either party pursues formal proceedings.
-          </p>
-        </section>
+      <Section title="10. Liability">
+        <p>
+          IRONMAX is provided &quot;as is&quot;. To the extent permitted by law, the Company is not liable
+          for indirect or consequential loss, or for loss of Points caused by your misuse of the platform.
+          Nothing in these Terms limits liability that cannot be excluded by law, or your mandatory rights
+          as a consumer.
+        </p>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">10. Points &amp; Payments</h2>
-          <p>
-            The website may allow customers to purchase or receive Points that may be used solely
-            to purchase eligible products or services available on the IRONMAX platform. Points
-            are digital units intended exclusively for use within the IRONMAX platform.
-          </p>
-          <p className="mt-2">Points:</p>
-          <ul className="list-disc pl-5 mt-2 flex flex-col gap-1">
-            <li>are not money, electronic money, cryptocurrency, or a bank deposit;</li>
-            <li>do not represent stored monetary value or funds held on behalf of the customer;</li>
-            <li>have no monetary or cash value outside the IRONMAX platform;</li>
-            <li>cannot be exchanged or redeemed for cash;</li>
-            <li>
-              cannot be withdrawn to a bank account, payment card, payment provider,
-              cryptocurrency account, or any other external payment method;
-            </li>
-            <li>cannot be transferred, sold, assigned, traded, or exchanged between users;</li>
-            <li>may only be used toward eligible purchases available on the IRONMAX platform;</li>
-            <li>
-              are non-refundable once purchased or added to the customer&apos;s account, except
-              where required by applicable law or where a refund is explicitly approved by{" "}
-              <strong>—</strong>.
-            </li>
-          </ul>
-          <p className="mt-3">
-            Customers may buy Points to their account using the payment methods made available on
-            the IRONMAX platform. Purchasing or receiving Points does not create a bank account,
-            payment account, stored-value account, electronic money account, or other financial
-            account with <strong>—</strong>.
-          </p>
-          <p className="mt-2">
-            Unused Points will remain available in the customer&apos;s account until they are
-            used, subject to these Terms and any applicable account restrictions.
-          </p>
-          <p className="mt-2">
-            Where a purchase made using Points is eligible for a refund, <strong>—</strong>{" "}
-            reserves the right, where permitted by applicable law, to return the corresponding
-            Points to the customer&apos;s account rather than provide cash or a refund to an
-            external payment method.
-          </p>
-          <p className="mt-2">
-            We reserve the right to suspend, restrict, correct, remove, or adjust Points where
-            reasonably necessary to address technical errors, duplicate Points, chargebacks,
-            payment reversals, fraudulent activity, abuse, or violations of these Terms.
-          </p>
-          <p className="mt-2">
-            Points may not be purchased, obtained, transferred, or used for resale, money
-            transmission, currency exchange, arbitrage, or any other unauthorised commercial or
-            financial purpose.
-          </p>
-        </section>
+      <Section title="11. Failed payments, non-delivery and chargebacks">
+        <List>
+          <li><strong>Payment not completed:</strong> if a payment is declined, cancelled or fails 3-D Secure, no Points are credited and nothing is owed.</li>
+          <li><strong>Points not delivered:</strong> if you were charged but did not receive your Points, we credit them or refund you in full, as set out in the Refund Policy.</li>
+          <li><strong>Payment reversed later:</strong> if a completed payment is reversed or charged back, the Points from that payment are removed from your balance. If they were already used, the balance may become negative and must be settled before you can buy again.</li>
+          <li><strong>Chargebacks:</strong> please contact us first — we try to resolve every complaint within 3 business days. When a chargeback is opened we may suspend the account while we answer it with the card issuer. A chargeback filed without first contacting us, or found to be unjustified, may lead to account closure. Accounts with justified chargebacks are not penalised.</li>
+        </List>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">11. Changes to these Terms</h2>
-          <p>
-            We may update these Terms from time to time to reflect changes in our platform, legal
-            requirements, or business practices. Material changes will be indicated by an updated
-            "Last updated" date above. Continued use of IRONMAX after a change is published means
-            you accept the updated Terms.
-          </p>
-        </section>
+      <Section title="12. Suspension and closing your account">
+        <p>
+          <strong>Closing by you:</strong> you may close your account at any time by emailing us. Closure
+          takes effect within 5 business days. Unused Points are lost on closure, but you may first ask
+          for a refund of eligible unused purchases under the Refund Policy.
+        </p>
+        <p>
+          <strong>Closing by us:</strong> we may close an account for any reason by giving you at least 30
+          days&apos; notice by email. During that period you can still use your Points or ask for a refund
+          of eligible unused purchases. We may suspend or close an account immediately, without notice, if
+          we reasonably suspect fraud, abuse, a breach of these Terms, use from a prohibited country, or if
+          the law or our payment provider requires it.
+        </p>
+      </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">12. Contact</h2>
-          <p>
-            Questions about these Terms can be directed to our support team at{" "}
-            <a href={`mailto:${COMPANY.email}`} className="text-amber-400 hover:underline">{COMPANY.email}</a>{" "}
-            or via the <a href="/contact" className="text-amber-400 hover:underline">Contact</a> page.
-          </p>
-        </section>
-      </div>
-    </div>
+      <Section title="13. Governing law and disputes">
+        <p>
+          These Terms are governed by the laws of the Republic of Lithuania. If you are a consumer, you
+          keep the protection of the mandatory laws of your country of residence. Please contact us first
+          with any complaint; we reply within 14 days. Consumers may also turn to the State Consumer Rights
+          Protection Authority of Lithuania (Valstybinė vartotojų teisių apsaugos tarnyba, www.vvtat.lt)
+          for out-of-court dispute resolution. Disputes that cannot be settled go to the competent courts
+          of the Republic of Lithuania, without affecting a consumer&apos;s right to sue in their home
+          country.
+        </p>
+      </Section>
+
+      <Section title="14. Changes to these Terms">
+        <p>
+          We may update these Terms. Material changes are announced by email or on the website at least 14
+          days in advance and are shown by a new &quot;Last updated&quot; date. Changes never apply to
+          purchases made before they take effect.
+        </p>
+      </Section>
+
+      <Section title="15. Contact">
+        <p>
+          {COMPANY.legalName}, {COMPANY.address}, Lithuania. Email:{" "}
+          <a href={`mailto:${COMPANY.email}`} className={linkCls}>{COMPANY.email}</a>. Support hours:{" "}
+          {COMPANY.supportHours}. You can also use the <Link href="/contact" className={linkCls}>Contact page</Link>.
+        </p>
+      </Section>
+    </LegalPage>
   );
 }

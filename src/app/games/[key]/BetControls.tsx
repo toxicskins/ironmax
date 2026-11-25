@@ -84,7 +84,7 @@ function RouletteControls({ onChange }: { onChange: (p: BetParams) => void }) {
   function pick(v: string) { setBet(v); onChange({ bet: v }); }
   useEffect(() => { onChange({ bet }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Row label="Bet on">
+    <Row label="Pick">
       {[["red", "Red (1.97x)"], ["black", "Black (1.97x)"], ["green", "Green 0 (35.5x)"]].map(([v, l]) => (
         <button key={v} onClick={() => pick(v)}
           className={`px-3 py-1.5 rounded-md text-sm font-semibold ${bet === v ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
@@ -149,7 +149,7 @@ function SicBoControls({ onChange }: { onChange: (p: BetParams) => void }) {
   useEffect(() => { onChange({ bet }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="flex flex-col gap-2">
-      <Row label="Bet on">
+      <Row label="Pick">
         <div className="flex flex-wrap gap-1.5">
           {Object.keys(SIC_BO_BET_LABELS).map((v) => (
             <button key={v} onClick={() => pick(v)}
